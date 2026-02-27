@@ -1,6 +1,4 @@
 # lexer.py
-#El profesor usa un archi.bp para testear el lexer, no sé qué es eso.
-
 import sly
 from rich import print
 
