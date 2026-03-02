@@ -28,14 +28,14 @@ class Lexer(sly.Lexer):
 
         #Operadores de relación
 
-        LT,LE,GT,GE,EQ,NE,LAND, LOR,
+        LT, LE, GT, GE, EQ, NE, LAND, LOR,
 
         #Operadores de asignación
 
-        ADDEQ,SUBEQ,MULEQ,DIVEQ,MODEQ,INC,DEC,
+        ADDEQ, SUBEQ, MULEQ, DIVEQ, MODEQ, INC, DEC,
 
         #Identificadores y literales
-        ID,LITERAL_INTEGER, LITERAL_FLOAT, LITERAL_CHAR, LITERAL_STRING,QUESTION, COLON,
+        ID, LITERAL_INTEGER, LITERAL_FLOAT, LITERAL_CHAR, LITERAL_STRING, QUESTION, COLON,
     }
 
     literals = '+-*/%^=;,.:(){}[]'
@@ -63,7 +63,7 @@ class Lexer(sly.Lexer):
     #Palabras reservadas
     ID['array'] = ARRAY
     ID['boolean'] = BOOLEAN
-    ID['SUPER'] = SUPER
+    ID['super'] = SUPER
     ID['class'] = CLASS
     ID['function'] = FUNCTION
     ID['void'] = VOID
