@@ -424,5 +424,7 @@ if __name__ == "__main__":
     
     from rich import print
     from rich.pretty import pprint
+    from ASTVisualizer import ast_to_tree
 
-    pprint(ast)
+    tree = ast_to_tree(ast)
+    print(tree)
