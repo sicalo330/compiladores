@@ -485,11 +485,11 @@ class Parser(sly.Parser):
 # Utilidad: convertir algo en bloque si no lo es
 # ===================================================
 def as_block(x):
-	if isinstance(x, Block):
-		return x
-	if isinstance(x, list):
-		return Block(x)
-	return Block([x])
+    if isinstance(x, Block):
+        return x
+    if isinstance(x, list):
+        return Block(x)
+    return Block([x])
 	
 	
 # Convertir AST a diccionario
