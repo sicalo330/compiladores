@@ -23,7 +23,7 @@ def ast_to_tree(node):
             for item in value:
                 branch.add(ast_to_tree(item))
 
-        elif hasattr(value, "__dict__"):  # nodo AST
+        elif hasattr(value, "__dict__"):
             branch = tree.add(f"[green]{attr}[/green]")
             branch.add(ast_to_tree(value))
 

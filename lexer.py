@@ -30,6 +30,7 @@ class Lexer(sly.Lexer):
 	# ignore newline
 	@_(r"\n+")
 	def ignore_newline(self, t):
+		#Por si se pregunta, esto es lo que se encarga de aumentar en uno el lineno teniendo en cuenta los saltos de línea
 		self.lineno += t.value.count('\n')
 		
 	# ignore comentarios
@@ -136,8 +137,6 @@ def tokenize(filename:str):
 	
 	txt = open(filename, encoding='utf-8').read()
 	lex = Lexer()
-
-	print("TOKENIZE")
 
 	table = Table(title='Análisis Léxico')
 	table.add_column('type')

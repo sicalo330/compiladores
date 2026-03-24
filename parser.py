@@ -5,27 +5,35 @@ from lexer import Lexer
 from errors import error
 from model import *
 
+#Esto agrega número de línea a cada nodo del AST, sierve para errores semánticos y debug
 def _L(node, lineno):
     node.lineno = lineno if lineno else 0
     return node
 
+#Aquí se define la gramática del parser.py
 class Parser(sly.Parser):
-
+    #Por así decirlo los tokens se declaran aquó usando la clase lexer.py
     tokens = Lexer.tokens
     #¿Esto de abajo es necesario?
     start = 'prog'
 
+    #Esto muestra los errores
     log = logging.getLogger()
     log.setLevel(logging.ERROR)
 
     expected_shift_reduce = 1
+    #Esto va a generar un archivo grammar.txt
     debugfile = "grammar.txt"
 
 # PROGRAMA
+#Esto crea el nodo raíz de todo el proyecto
     @_("decl_list")
     def prog(self, p):
         lineno = p.decl_list[0].lineno if p.decl_list else 0
-        return _L(Program(p.decl_list), lineno)
+        #Hacer una distinción clara entre _L y Program, este ultimo crea los nodos pero _L los modifica
+        node = Program(p.decl_list)
+        node.lineno = lineno
+        return node
 
     @_('decl')
     def decl_list(self, p):
@@ -57,6 +65,10 @@ class Parser(sly.Parser):
         return _L(ArrayDecl(p.ID, p.type_array_sized, p.expr_list), p.lineno)
 
     @_('ID ":" type_func "=" "{" opt_stmt_list "}"')
+    def decl(self, p):
+        return _L(FuncDecl(p.ID, p.type_func, p.opt_stmt_list), p.lineno)
+    
+    @_('ID ":" type_func "=" "{" opt_stmt_list "}" ";"')
     def decl(self, p):
         return _L(FuncDecl(p.ID, p.type_func, p.opt_stmt_list), p.lineno)
 
@@ -421,6 +433,10 @@ if __name__ == "__main__":
 
     ast = parser.parse(lexer.tokenize(text))
 
+    if ast is None:
+        print("No se generó AST debido a problemas de sintaxis")
+        sys.exit(1)
+
     print("\nAST generado:\n")
     
     from rich import print
@@ -433,4 +449,4 @@ if __name__ == "__main__":
     print(tree)
 
     dot = build_graphviz(ast)
-    dot.render("ast", format="png", view=True)
+    dot.render("AST graphviz/ast", format="png", view=True)
