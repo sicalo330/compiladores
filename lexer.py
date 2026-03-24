@@ -136,7 +136,9 @@ def tokenize(filename:str):
 	
 	txt = open(filename, encoding='utf-8').read()
 	lex = Lexer()
-	
+
+	print("TOKENIZE")
+
 	table = Table(title='Análisis Léxico')
 	table.add_column('type')
 	table.add_column('value')

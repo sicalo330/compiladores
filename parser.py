@@ -12,6 +12,7 @@ def _L(node, lineno):
 class Parser(sly.Parser):
 
     tokens = Lexer.tokens
+    #¿Esto de abajo es necesario?
     start = 'prog'
 
     log = logging.getLogger()
@@ -425,6 +426,11 @@ if __name__ == "__main__":
     from rich import print
     from rich.pretty import pprint
     from ASTVisualizer import ast_to_tree
+    from graphviz_ast import build_graphviz
+    from graphviz_ast import Digraph
 
     tree = ast_to_tree(ast)
     print(tree)
+
+    dot = build_graphviz(ast)
+    dot.render("ast", format="png", view=True)
