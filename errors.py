@@ -19,7 +19,7 @@ _errors_detected = 0
 def error(message, lineno=None):
 	global _errors_detected
 	if lineno:
-		print(f'{lineno}: [blue]{message}[/blue]')
+		print(f'{lineno}: [red]{message}[/red]')
 	else:
 		print(f"[red]{message}[/red]")
 	_errors_detected += 1

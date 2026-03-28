@@ -23,7 +23,7 @@ class Parser(sly.Parser):
 
     expected_shift_reduce = 1
     #Esto va a generar un archivo grammar.txt
-    debugfile = "grammar.txt"
+    debugfile = "complements/grammarAST.txt"
 
 # PROGRAMA
 #Esto crea el nodo raíz de todo el proyecto
@@ -327,9 +327,9 @@ class Parser(sly.Parser):
     def factor(self, p):
         return _L(Location(p.ID), p.lineno)
 
-    @_('INTEGER_LITERAL')
+    @_('HOLA_INTEGER')
     def factor(self, p):
-        return _L(Literal(p.INTEGER_LITERAL, "integer"), p.lineno)
+        return _L(Literal(p.HOLA_INTEGER, "integer"), p.lineno)
 
     @_('FLOAT_LITERAL')
     def factor(self, p):
@@ -422,7 +422,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Uso: python parser.py archivo.bminor")
         sys.exit(1)
-
+    #Filename es el directorio que busca del testeo, test/good0.bminor por ejemplo
     filename = sys.argv[1]
 
     with open(filename, "r", encoding="utf-8") as f:
@@ -445,8 +445,8 @@ if __name__ == "__main__":
     from graphviz_ast import build_graphviz
     from graphviz_ast import Digraph
 
-    tree = ast_to_tree(ast)
-    print(tree)
+    # tree = ast_to_tree(ast)
+    # print(tree)
 
-    dot = build_graphviz(ast)
-    dot.render("AST graphviz/ast", format="png", view=True)
+    # dot = build_graphviz(ast)
+    # dot.render("AST graphviz/ast", format="png", view=True)
