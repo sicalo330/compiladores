@@ -108,16 +108,16 @@ Rule 104   type_array -> ARRAY [ ] type_simple
 
 Unused terminals:
 
-    AUTO
-    MODEQ
     MULEQ
-    CONTINUE
-    SUBEQ
-    BREAK
     CONSTANT
-    DIVEQ
-    WHILE
+    AUTO
     ADDEQ
+    CONTINUE
+    WHILE
+    MODEQ
+    DIVEQ
+    BREAK
+    SUBEQ
 
 Terminals, with rules where they appear:
 

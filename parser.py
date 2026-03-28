@@ -441,12 +441,11 @@ if __name__ == "__main__":
     
     from rich import print
     from rich.pretty import pprint
-    from ASTVisualizer import ast_to_tree
-    from graphviz_ast import build_graphviz
-    from graphviz_ast import Digraph
+    from visualizers import ASTVisualizer
+    from visualizers import graphviz_ast
 
-    # tree = ast_to_tree(ast)
-    # print(tree)
+    tree = ASTVisualizer.ast_to_tree(ast)
+    print(tree)
 
-    # dot = build_graphviz(ast)
-    # dot.render("AST graphviz/ast", format="png", view=True)
+    dot = graphviz_ast.build_graphviz(ast)
+    dot.render("AST graphviz/ast", format="png", view=True)
