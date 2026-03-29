@@ -67,10 +67,6 @@ class Parser(sly.Parser):
     @_('ID ":" type_func "=" "{" opt_stmt_list "}"')
     def decl(self, p):
         return _L(FuncDecl(p.ID, p.type_func, p.opt_stmt_list), p.lineno)
-    
-    @_('ID ":" type_func "=" "{" opt_stmt_list "}" ";"')
-    def decl(self, p):
-        return _L(FuncDecl(p.ID, p.type_func, p.opt_stmt_list), p.lineno)
 
 # SENTENCIAS
     @_('')
@@ -199,9 +195,10 @@ class Parser(sly.Parser):
     def expr_list(self, p):
         return [p.expr]
 
-    @_('expr "," expr_list')
+    @_('expr_list "," expr')
     def expr_list(self, p):
-        return [p.expr] + p.expr_list
+        p.expr_list.append(p.expr)
+        return p.expr_list
 
     @_('expr1')
     def expr(self, p):
@@ -409,6 +406,12 @@ class Parser(sly.Parser):
         return _L(ArrayType(p.type_array), p.lineno)
 
 # ERROR
+    @_('stmt_list error ";"')
+    def stmt_list(self, p):
+        # Esto permite que el parser ignore una sentencia mal formada y siga con la siguiente
+        print(f"Error de sintaxis en línea {p.lineno}: saltando hasta el próximo ';' para continuar.")
+        return p.stmt_list
+
     def error(self, p):
         if p:
             error(f"Error de sintaxis cerca de '{p.value}'", p.lineno)

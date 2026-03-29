@@ -6,10 +6,14 @@ from model import *
 
 class Checker:
     def __init__(self):
-        self.symtab = Symtab("global")
-        self.current_function = None
-        self.error_set = set()
-        self.errors = []
+            self.symtab = Symtab("global")
+            self._func_stack = []  #Es necesario poner una lista para simular una pila de funciones, creo que será util para bad1
+            self.error_set = set()
+            self.errors = []
+    
+    @property
+    def current_function(self):
+        return self._func_stack[-1] if self._func_stack else None
 
     # ==========================================
     # ENTRY POINT
@@ -85,33 +89,15 @@ class Checker:
 
     @multimethod
     def _visit(self, node: FuncDecl):
-        if node.name in self.symtab._map:
-            self.error(f"Función '{node.name}' ya declarada")
-
-        func_ret_type = self.get_type(node.datatype)
-        self.symtab.add(node.name, {
-            "kind": "func",
-            "type": func_ret_type,
-            "params": node.datatype.params if hasattr(node.datatype, "params") else []
-        })
-
-        # Nuevo scope para parámetros y cuerpo
-        old_symtab = self.symtab
-        self.symtab = Symtab(f"func_{node.name}", parent=old_symtab)
-        self.current_function = node
-
-        if hasattr(node.datatype, "params"):
-            for param in node.datatype.params:
-                ptype = self.get_type(param.datatype)
-                self.symtab.add(param.name, {"kind": "param", "type": ptype})
-
+        # ... lógica de registro ...
+        ret_type = self.get_type(node.datatype.ret_type)
+        self._func_stack.append(ret_type) # Guardamos el tipo de retorno esperado
+        
         if node.body:
             for stmt in node.body:
                 self.visit(stmt)
-
-        self.symtab = old_symtab
-        self.current_function = None
-
+        
+        self._func_stack.pop()
     # ==========================================
     # STATEMENTS
     # ==========================================
@@ -126,8 +112,9 @@ class Checker:
     @multimethod
     def _visit(self, node: IfStmt):
         cond_type = self.visit(node.cond)
-        if cond_type != "boolean":
+        if cond_type != "boolean" and cond_type != "error":
             self.error(f"La condición del if debe ser boolean, se obtuvo {cond_type}")
+        
         self.visit(node.then_b)
         if node.else_b:
             self.visit(node.else_b)
@@ -151,17 +138,11 @@ class Checker:
 
     @multimethod
     def _visit(self, node: ReturnStmt):
-        if not self.current_function:
-            self.error("Sentencia 'return' fuera de una función")
-            return
-
-        expected = self.get_type(self.current_function.datatype.ret_type)
-        if node.expr:
-            actual = self.visit(node.expr)
-            if actual != expected:
-                self.error(f"Tipo de retorno incorrecto en '{self.current_function.name}': se esperaba {expected}, se obtuvo {actual}")
-        elif expected != "void":
-            self.error(f"La función '{self.current_function.name}' debe retornar un valor de tipo {expected}")
+        actual_ret = self.visit(node.expr) if node.expr else "void"
+        expected_ret = self.current_function
+        
+        if actual_ret != "error" and actual_ret != expected_ret:
+            self.error(f"Tipo de retorno incorrecto en función: se esperaba {expected_ret}, se obtuvo {actual_ret}")
 
     @multimethod
     def _visit(self, node: PrintStmt):
@@ -186,16 +167,17 @@ class Checker:
 
     @multimethod
     def _visit(self, node: BinOp):
-        left = self.visit(node.left)
-        right = self.visit(node.right)
-        # Nota: El orden en check_binop suele ser (op, left, right) o (left, op, right)
-        # Ajustado al estándar de tu typesys.py:
-        result = check_binop(left, node.op, right)
-        if result is None:
-            self.error(f"Operación inválida: {left} {node.op} {right}")
-            result = "error"
-        node.type = result
-        return result
+        left_type = self.visit(node.left)
+        right_type = self.visit(node.right)
+
+        if left_type == "error" or right_type == "error":
+            return "error" # Silenciamos el error consecuente
+
+        res = check_binop(left_type, node.op, right_type)
+        if res is None:
+            self.error(f"Operación inválida: {left_type} {node.op} {right_type}")
+            return "error"
+        return res
 
     @multimethod
     def _visit(self, node: UnaryOp):
@@ -231,21 +213,33 @@ class Checker:
     @multimethod
     def _visit(self, node: FuncCall):
         symbol = self.symtab.get(node.name)
-        if not symbol or symbol["kind"] != "func":
+        if not symbol:
             self.error(f"'{node.name}' no es una función declarada")
             return "error"
 
-        params = symbol.get("params", [])
+        # Extraemos el tipo de la función
+        func_type = symbol["type"]
+        
+        # IMPORTANTE: Validar que sea realmente una función
+        if not isinstance(func_type, FuncType):
+            self.error(f"'{node.name}' no es una función")
+            return "error"
+
+        params = func_type.params
+
+        # 1. Validar cantidad de argumentos
         if len(params) != len(node.args):
             self.error(f"La función '{node.name}' esperaba {len(params)} argumentos, recibió {len(node.args)}")
 
+        # 2. Validar tipos de argumentos (usando zip para no romper si las listas difieren)
         for i, (param, arg) in enumerate(zip(params, node.args)):
             arg_type = self.visit(arg)
             param_type = self.get_type(param.datatype)
-            if arg_type != param_type:
+            if arg_type != "error" and arg_type != param_type:
                 self.error(f"Argumento {i+1} de '{node.name}' incorrecto: se esperaba {param_type}, se obtuvo {arg_type}")
 
-        return symbol["type"]
+        # 3. DEVOLVER EL TIPO DE RETORNO (Esto arregla el error de "integer % error")
+        return self.get_type(func_type.ret_type)
 
     @multimethod
     def _visit(self, node: Literal):

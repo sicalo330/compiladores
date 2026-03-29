@@ -101,8 +101,11 @@ def loockup_type(name):
 	else:
 		return None
 		
-def check_binop(op, left_type, right_type):
-	return _bin_ops.get((left_type, op, right_type))
+# def check_binop(op, left_type, right_type):
+# 	return _bin_ops.get((left_type, op, right_type))
+
+def check_binop(left, op, right): #Creo que el órden de estos parámetros está dando error con bad5, debería preguntarle al profe
+    return _bin_ops.get((left, op, right))
 
 def check_unaryop(op, operand_type):
 	return _unary_ops.get((op, operand_type))
