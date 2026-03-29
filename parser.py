@@ -23,7 +23,7 @@ class Parser(sly.Parser):
 
     expected_shift_reduce = 1
     #Esto va a generar un archivo grammar.txt
-    debugfile = "complements/grammarAST.txt"
+    debugfile = "additions/grammarAST.txt"
 
 # PROGRAMA
 #Esto crea el nodo raíz de todo el proyecto
@@ -327,9 +327,9 @@ class Parser(sly.Parser):
     def factor(self, p):
         return _L(Location(p.ID), p.lineno)
 
-    @_('HOLA_INTEGER')
+    @_('INTEGER_LITERAL')
     def factor(self, p):
-        return _L(Literal(p.HOLA_INTEGER, "integer"), p.lineno)
+        return _L(Literal(p.INTEGER_LITERAL, "integer"), p.lineno)
 
     @_('FLOAT_LITERAL')
     def factor(self, p):
@@ -415,37 +415,42 @@ class Parser(sly.Parser):
         else:
             error("Error de sintaxis al final del archivo", "EOF")
 
-if __name__ == "__main__":
-    import sys
-    from lexer import Lexer
+# if __name__ == "__main__":
+#     import sys
+#     from lexer import Lexer
 
-    if len(sys.argv) < 2:
-        print("Uso: python parser.py archivo.bminor")
-        sys.exit(1)
-    #Filename es el directorio que busca del testeo, test/good0.bminor por ejemplo
-    filename = sys.argv[1]
+#     if len(sys.argv) < 2:
+#         print("Uso: python parser.py archivo.bminor")
+#         sys.exit(1)
+#     #Filename es el directorio que busca del testeo, test/good0.bminor por ejemplo
+#     filename = sys.argv[1]
 
-    with open(filename, "r", encoding="utf-8") as f:
-        text = f.read()
+#     with open(filename, "r", encoding="utf-8") as f:
+#         text = f.read()
 
-    lexer = Lexer()
-    parser = Parser()
+#     lexer = Lexer()
+#     parser = Parser()
 
-    ast = parser.parse(lexer.tokenize(text))
+#     ast = parser.parse(lexer.tokenize(text))
 
-    if ast is None:
-        print("No se generó AST debido a problemas de sintaxis")
-        sys.exit(1)
+#     if ast is None:
+#         print("No se generó AST debido a problemas de sintaxis")
+#         sys.exit(1)
 
-    print("\nAST generado:\n")
+#     print("\nAST generado:\n")
     
-    from rich import print
-    from rich.pretty import pprint
-    from visualizers import ASTVisualizer
-    from visualizers import graphviz_ast
+#     from rich import print
+#     from rich.pretty import pprint
+#     from visualizers import ASTVisualizer
+#     from visualizers import graphviz_ast
 
-    tree = ASTVisualizer.ast_to_tree(ast)
-    print(tree)
+#     tree = ASTVisualizer.ast_to_tree(ast)
+#     print(tree)
 
-    dot = graphviz_ast.build_graphviz(ast)
-    dot.render("AST graphviz/ast", format="png", view=True)
+#     dot = graphviz_ast.build_graphviz(ast)
+#     dot.render("AST graphviz/ast", format="png", view=True)
+
+#     from checker import Checker
+
+#     checker = Checker()
+#     checker.check(ast)

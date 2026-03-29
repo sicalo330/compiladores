@@ -20,7 +20,7 @@ class Lexer(sly.Lexer):
 		ADDEQ, SUBEQ, MULEQ, DIVEQ, MODEQ,
 		
 		# other tokens
-		ID, CHAR_LITERAL, FLOAT_LITERAL, HOLA_INTEGER, STRING_LITERAL,
+		ID, CHAR_LITERAL, FLOAT_LITERAL, INTEGER_LITERAL, STRING_LITERAL,
 	}
 	literals = '+-*/%^=:;,()[]{}!'
 
@@ -112,7 +112,7 @@ class Lexer(sly.Lexer):
 		error(f"Literal de punto flotante '{t.value}' no sportado", t.lineno)
 		
 	@_(r"[1-9]\d*|0")
-	def HOLA_INTEGER(self, t):
+	def INTEGER_LITERAL(self, t):
 		t.value = int(t.value)
 		return t
 
