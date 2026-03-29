@@ -38,51 +38,51 @@ def firstAndFollows(G: Grammar) -> tuple[dict[str, set],dict[str,set],dict[str,b
     #print("DEBUG: ", first, "\n")
 
     # Guardar estados previos
-    prevFirst: dict = {}
-    prevFollow: dict = {}
-    prevNullable: dict = {}
+    prevFirst: dict[str,set] = {}
+    prevFollow: dict[str,set] = {}
+    prevNullable: dict[str,bool] = {}
 
     firstIteration: bool = True
-    iterations: int = 0
+    #iterations: int = 0
     k: int = 0
 
     while firstIteration or (first != prevFirst and follow != prevFollow and nullable != prevNullable):
-        iterations += 1
-        print("Iteración: ", iterations, '\n')
+        #iterations += 1
+        #print("Iteración: ", iterations, '\n')
         firstIteration = False
 
         prevFirst = first.copy()
         prevFollow = follow.copy()
         prevNullable = nullable.copy()
 
-        print(first, "\n", prevFirst)
+        #print(first, "\n", prevFirst)
 
         for rule in G.prodRules:
             k = len(rule[1])
-            print(rule, k)
+            #print(rule, k)
 
             if (k == 0) or allNullable(rule[1], nullable):
                 nullable[rule[0]] = True
 
             for i in range(k):
-                print(i)
+                #print(i)
                 if i == 0 or allNullable(rule[1][0:i-1], nullable):
-                    print("FIRST[", rule[0], "] U FIRST[", rule[1][i], "]")
+                    #print("FIRST[", rule[0], "] U FIRST[", rule[1][i], "]")
                     first[rule[0]] |= first[rule[1][i]]
-                    print(first[rule[0]])
+                    #print(first[rule[0]])
 
                 if i == k-1 or allNullable(rule[1][i+1:k], nullable):
-                    print("FOLLOW[", rule[1][i], "] U FOLLOW[", rule[0], "]")
+                    #print("FOLLOW[", rule[1][i], "] U FOLLOW[", rule[0], "]")
                     follow[rule[1][i]] |= follow[rule[0]]
-                    print(follow[rule[1][i]])
+                    #print(follow[rule[1][i]])
                     
                 for j in range(i+1,k):
                     if i+1 == j or allNullable(rule[1][i+1:j-1], nullable):
-                        print("FOLLOW[", rule[1][i], "] U FIRST[", rule[1][j], "]")
+                        #print("FOLLOW[", rule[1][i], "] U FIRST[", rule[1][j], "]")
                         follow[rule[1][i]] |= first[rule[1][j]]
-                        print(follow[rule[1][i]])
+                        #print(follow[rule[1][i]])
 
-        print(first, "\n", prevFirst)
+        #print(first, "\n", prevFirst)
     return first, follow, nullable
 
 def main():
