@@ -234,30 +234,35 @@ class Checker:
     def _visit(self, node: Location):
         symbol = self.symtab.get(node.name)
         if symbol is None:
-            self.error(f"Variable '{node.name}' no declarada")
+            self.error(f"Variable '{node.name}' no declarada", node)
             return "error"
-        return symbol["type"]
+        return symbol.get("type", "error")
 
     #Cambios aquí
     @multimethod
     def _visit(self, node: ArrayAccess):
-        # 1. Obtener el tipo de la base (la variable que es un arreglo)
-        arr_type = self.visit(node.base) 
+        # 1. Buscamos el nombre del arreglo directamente en la symtab
+        # ya que en tu model.py 'name' es un string, no un nodo Location
+        symbol = self.symtab.get(node.name)
+        if symbol is None:
+            self.error(f"Arreglo '{node.name}' no declarado", node)
+            return "error"
         
-        # 2. Validar que el índice sea un entero
+        base_type = symbol.get("type", "error")
+        
+        # 2. Validamos el índice (el índice sí es un nodo Expr, así que lo visitamos)
         idx_type = self.visit(node.index)
         if idx_type != "error" and idx_type != "integer":
             self.error(f"El índice del arreglo debe ser integer, se obtuvo {idx_type}", node)
 
-        # 3. IMPORTANTE: Devolver el tipo de los ELEMENTOS del arreglo
-        # Si arr_type es un objeto ArrayType o ArraySizedType, extraemos su elem_type
-        if isinstance(arr_type, (ArrayType, ArraySizedType)):
-            return self.get_type(arr_type.elem_type)
+        # 3. Devolvemos el tipo de los ELEMENTOS
+        # Si es un ArraySizedType o ArrayType, extraemos el elem_type
+        if isinstance(base_type, (ArrayType, ArraySizedType)):
+            return self.get_type(base_type.elem_type)
         
-        # Si llegamos aquí y no es un error previo, es que intentaron indexar algo que no es array
-        if arr_type != "error":
-            self.error(f"Se intentó indexar algo que no es un arreglo", node)
-            
+        if base_type != "error":
+            self.error(f"Se intentó indexar '{node.name}', que no es un arreglo", node)
+        
         return "error"
 
     @multimethod
@@ -267,36 +272,58 @@ class Checker:
             self.error(f"'{node.name}' no es una función declarada", node)
             return "error"
 
+        # Extraemos el tipo de la función
         func_type = symbol.get("type")
         
-        # Validación de seguridad: ¿es realmente una función?
+        # 1. Validar que realmente sea una función
         if not isinstance(func_type, FuncType):
             self.error(f"'{node.name}' no es una función", node)
             return "error"
 
         params = func_type.params
-        args = node.args  # <--- IMPORTANTE: Definir args
+        args = node.args
 
-        # 1. Validar cantidad de argumentos
+        # 2. Validar cantidad de argumentos
         if len(params) != len(args):
             self.error(f"La función '{node.name}' esperaba {len(params)} argumentos, recibió {len(args)}", node)
 
-        # 2. Validar tipos de argumentos (usando zip para evitar desbordamiento)
+        # 3. Validar tipos de argumentos
+        # Usamos zip para comparar uno a uno hasta donde alcancen los parámetros
         for i, (param, arg_expr) in enumerate(zip(params, args)):
             arg_type = self.visit(arg_expr)
             param_type = self.get_type(param.datatype)
 
-            if arg_type != "error" and arg_type != param_type:
-                # Pasamos arg_expr para que el error marque la línea exacta del argumento mal puesto
+            if arg_type == "error":
+                continue
+
+            # Lógica de compatibilidad de tipos
+            compatible = False
+            
+            # Caso A: Tipos básicos idénticos (integer == integer, etc.)
+            if arg_type == param_type:
+                compatible = True
+            
+            # Caso B: Compatibilidad de Arreglos (ArraySizedType vs ArrayType)
+            # Esto arregla el error de good7 donde pasas numbers (sized) a arr (unsized)
+            elif isinstance(arg_type, (ArrayType, ArraySizedType)) and \
+                    isinstance(param_type, (ArrayType, ArraySizedType)):
+                
+                # Obtenemos el tipo base de ambos (ej: 'integer')
+                arg_elem = self.get_type(arg_type.elem_type)
+                param_elem = self.get_type(param_type.elem_type)
+                
+                if arg_elem == param_elem:
+                    compatible = True
+
+            if not compatible:
                 self.error(f"Argumento {i+1} de '{node.name}' incorrecto: se esperaba {param_type}, se obtuvo {arg_type}", arg_expr)
 
-        # 3. Visitar los argumentos "extra" (si los hay) 
-        # para detectar errores internos (como variables inexistentes)
+        # 4. Visitar argumentos extra si los hay (para detectar errores internos en ellos)
         if len(args) > len(params):
             for extra_arg in args[len(params):]:
                 self.visit(extra_arg)
 
-        # 4. Devolver tipo de retorno
+        # 5. Retornar el tipo de retorno de la función (esto permite encadenar expresiones)
         return self.get_type(func_type.ret_type)
 
     @multimethod
