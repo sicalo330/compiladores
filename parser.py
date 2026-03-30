@@ -27,13 +27,26 @@ class Parser(sly.Parser):
 
 # PROGRAMA
 #Esto crea el nodo raíz de todo el proyecto
-    @_("decl_list")
+    @_("top_list")
     def prog(self, p):
-        lineno = p.decl_list[0].lineno if p.decl_list else 0
-        #Hacer una distinción clara entre _L y Program, este ultimo crea los nodos pero _L los modifica
-        node = Program(p.decl_list)
+        lineno = p.top_list[0].lineno if p.top_list else 0
+        node = Program(p.top_list)
         node.lineno = lineno
         return node
+
+
+    @_('top')
+    def top_list(self, p):
+        return [p.top]
+
+    @_('top_list top')
+    def top_list(self, p):
+        return p.top_list + [p.top]
+
+
+    @_('decl','stmt')
+    def top(self, p):
+        return p[0]
 
     @_('decl')
     def decl_list(self, p):
@@ -67,6 +80,14 @@ class Parser(sly.Parser):
     @_('ID ":" type_func "=" "{" opt_stmt_list "}"')
     def decl(self, p):
         return _L(FuncDecl(p.ID, p.type_func, p.opt_stmt_list), p.lineno)
+    
+    @_('ID ":" type_array ";"')
+    def decl(self, p):
+        return _L(ArrayDecl(p.ID, p.type_array, None), p.lineno)
+
+    @_("ID ':' type_array '=' '{' expr_list '}' ';'")
+    def decl(self, p):
+        return _L(ArrayDecl(p.ID, p.type_array, p.expr_list), p.lineno)
 
 # SENTENCIAS
     @_('')
@@ -207,6 +228,10 @@ class Parser(sly.Parser):
     @_('lval "=" expr1')
     def expr1(self, p):
         return _L(AssignExpr(p.lval, p.expr1), p.lineno)
+    
+    @_('lval ADDEQ expr1')
+    def expr1(self, p):
+        return _L(AssignExpr(p.lval,BinOp('+', p.lval, p.expr1)),p.lineno)
 
     @_('expr2')
     def expr1(self, p):
@@ -323,6 +348,10 @@ class Parser(sly.Parser):
     @_('ID')
     def factor(self, p):
         return _L(Location(p.ID), p.lineno)
+    
+    @_('ID index')
+    def factor(self, p):
+        return _L(ArrayAccess(p.ID, p.index), p.lineno)
 
     @_('INTEGER_LITERAL')
     def factor(self, p):

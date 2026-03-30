@@ -80,6 +80,7 @@ class Lexer(sly.Lexer):
 	ID['float']    = FLOAT
 	ID['for']      = FOR
 	ID['function'] = FUNCTION
+	#ID['func']     = FUNCTION #Si al probar bad4 del parser el profesor quiere que el error esté en func quitar esta línea
 	ID['if']       = IF
 	ID['integer']  = INTEGER
 	ID['print']    = PRINT

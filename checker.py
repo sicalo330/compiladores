@@ -3,6 +3,7 @@ from symtab import Symtab
 from typesys import check_binop, check_unaryop
 from multimethod import multimethod
 from model import *
+from rich import print
 
 class Checker:
     def __init__(self):
@@ -39,6 +40,7 @@ class Checker:
     # Este método redirige a las implementaciones específicas de abajo
     def visit(self, node):
         if node is None: return None
+        if not isinstance(node, Node): return node
         return self._visit(node)
 
     @multimethod
@@ -49,7 +51,12 @@ class Checker:
     @multimethod
     def _visit(self, node: Program):
         for decl in node.decls:
-            self.visit(decl)
+            if isinstance(decl, ExprStmt):
+                self.error(
+                    f"Línea {decl.lineno}: No se permiten expresiones en el nivel superior"
+                )
+            else:
+                self.visit(decl)
 
     # ==========================================
     # DECLARATIONS
@@ -72,31 +79,46 @@ class Checker:
 
     @multimethod
     def _visit(self, node: ArrayDecl):
-        base_type = self.get_type(node.datatype) 
+        full_type = self.get_type(node.datatype)
+        elem_type = self.get_type(node.datatype.elem_type)
         
         if node.name in self.symtab._map:
             self.error(f"Arreglo '{node.name}' ya declarado en este ámbito")
             return
 
-        self.symtab.add(node.name, {"kind": "array", "type": base_type})
+        # array_type = f"array<{base_type}>"
+        # self.symtab.add(node.name, {"kind": "array", "type": array_type})
+        # node.type = array_type
+
+        self.symtab.add(node.name, {"kind": "array", "type": full_type})
 
         if node.elements:
             for el in node.elements:
-                actual_type = self.visit(el) 
-                if actual_type != base_type:
-                    self.error(f"Elemento inválido en array '{node.name}': se esperaba {base_type}, se obtuvo {actual_type}")
-        node.type = base_type
+                actual_type = self.visit(el)
+                if actual_type != elem_type:
+                    self.error(
+                        f"Elemento inválido en array '{node.name}': se esperaba {elem_type}, se obtuvo {actual_type}"
+                    )
 
     @multimethod
     def _visit(self, node: FuncDecl):
-        # ... lógica de registro ...
+        self.symtab.add(node.name, {"type": node.datatype, "category": "function"})
+        
         ret_type = self.get_type(node.datatype.ret_type)
-        self._func_stack.append(ret_type) # Guardamos el tipo de retorno esperado
+        self._func_stack.append(ret_type)
+        
+        old_tab = self.symtab
+        self.symtab = Symtab(node.name, parent=old_tab)
+        
+        for p in node.datatype.params:
+            # Esto llamará a _visit(self, node: Param)
+            self.visit(p) 
         
         if node.body:
             for stmt in node.body:
                 self.visit(stmt)
-        
+
+        self.symtab = old_tab
         self._func_stack.pop()
     # ==========================================
     # STATEMENTS
@@ -171,12 +193,18 @@ class Checker:
         right_type = self.visit(node.right)
 
         if left_type == "error" or right_type == "error":
-            return "error" # Silenciamos el error consecuente
+            return "error"
+
+        # 🚨 Validación clave
+        if not isinstance(left_type, str) or not isinstance(right_type, str):
+            self.error(f"Operación inválida: {left_type} {node.op} {right_type}")
+            return "error"
 
         res = check_binop(left_type, node.op, right_type)
         if res is None:
             self.error(f"Operación inválida: {left_type} {node.op} {right_type}")
             return "error"
+
         return res
 
     @multimethod
@@ -208,7 +236,14 @@ class Checker:
         if idx_type != "integer":
             self.error(f"El índice del arreglo debe ser integer, se obtuvo {idx_type}")
         
-        return symbol["type"]
+        arr_type = symbol["type"]
+
+        if not isinstance(arr_type, str) or not arr_type.startswith("array<"):
+            self.error(f"'{node.name}' no es un arreglo")
+            return "error"
+
+        inner_type = arr_type[len("array<"):-1]
+        return inner_type
 
     @multimethod
     def _visit(self, node: FuncCall):
@@ -242,6 +277,12 @@ class Checker:
         return self.get_type(func_type.ret_type)
 
     @multimethod
+    def _visit(self, node: Param):
+        t = self.get_type(node.datatype)
+        self.symtab.add(node.name, {"type": t, "category": "variable"})
+        return t
+
+    @multimethod
     def _visit(self, node: Literal):
         # Anotamos el nodo con el tipo normalizado
         node.type = self.normalize_type(node.type_name)
@@ -264,8 +305,11 @@ class Checker:
     def get_type(self, datatype):
         if isinstance(datatype, SimpleType):
             return self.normalize_type(datatype.name)
+
         if isinstance(datatype, (ArrayType, ArraySizedType)):
-            return self.get_type(datatype.elem_type)
+            return f"array<{self.get_type(datatype.elem_type)}>"
+
         if isinstance(datatype, FuncType):
             return self.get_type(datatype.ret_type)
+
         return "void"
