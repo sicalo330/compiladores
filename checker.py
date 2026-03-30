@@ -29,13 +29,13 @@ class Checker:
         else:
             print("\n[green]Semantic check: SUCCESS[/green]")
 
-    def error(self, msg, node=None):
-        if node:
-            msg = f"Línea {node.lineno}: {msg}"
+    # def error(self, msg, node=None):
+    #     if node:
+    #         msg = f"Línea {node.lineno}: {msg}"
         
-        if msg not in self.error_set:
-            self.errors.append(msg)
-            self.error_set.add(msg)
+    #     if msg not in self.error_set:
+    #         self.errors.append(msg)
+    #         self.error_set.add(msg)
 
     # ==========================================
     # DISPATCH (USANDO MULTIMETHOD)
@@ -60,9 +60,7 @@ class Checker:
     def _visit(self, node: Program):
         for decl in node.decls:
             if isinstance(decl, ExprStmt):
-                self.error(
-                    f"Línea {decl.lineno}: No se permiten expresiones en el nivel superior"
-                )
+                self.error(f"Línea {decl.lineno}: No se permiten expresiones en el nivel superior",node)
             else:
                 self.visit(decl)
 
@@ -74,7 +72,7 @@ class Checker:
         target_type = self.get_type(node.datatype) 
 
         if node.name in self.symtab._map: 
-            self.error(f"Variable '{node.name}' ya declarada en este ámbito")
+            self.error(f"Variable '{node.name}' ya declarada en este ámbito",node)
             return
 
         self.symtab.add(node.name, {"kind": "var", "type": target_type})
@@ -82,7 +80,7 @@ class Checker:
         if node.value:
             value_type = self.visit(node.value)
             if target_type != value_type:
-                self.error(f"Asignación incompatible en '{node.name}': Se esperaba un {target_type} y se obtuvo un {value_type}")
+                self.error(f"Asignación incompatible en '{node.name}': Se esperaba un {target_type} y se obtuvo un {value_type}",node)
         node.type = target_type
 
     @multimethod
@@ -91,7 +89,7 @@ class Checker:
         elem_type = self.get_type(node.datatype.elem_type)
         
         if node.name in self.symtab._map:
-            self.error(f"Arreglo '{node.name}' ya declarado en este ámbito")
+            self.error(f"Arreglo '{node.name}' ya declarado en este ámbito",node)
             return
 
         # array_type = f"array<{base_type}>"
@@ -104,9 +102,7 @@ class Checker:
             for el in node.elements:
                 actual_type = self.visit(el)
                 if actual_type != elem_type:
-                    self.error(
-                        f"Elemento inválido en array '{node.name}': se esperaba {elem_type}, se obtuvo {actual_type}"
-                    )
+                    self.error(f"Elemento inválido en array '{node.name}': se esperaba {elem_type}, se obtuvo {actual_type}",node)
 
     @multimethod
     def _visit(self, node: FuncDecl):
@@ -148,7 +144,7 @@ class Checker:
             cond_type = "error"
 
         if cond_type != "boolean" and cond_type != "error":
-            self.error(f"La condición del if debe ser boolean, se obtuvo {cond_type}")
+            self.error(f"La condición del if debe ser boolean, se obtuvo {cond_type}",node)
         
         self.visit(node.then_b)
         if node.else_b:
@@ -158,7 +154,7 @@ class Checker:
     def _visit(self, node: WhileStmt):
         cond_type = self.visit(node.cond)
         if cond_type != "boolean":
-            self.error(f"La condición del while debe ser boolean, se obtuvo {cond_type}")
+            self.error(f"La condición del while debe ser boolean, se obtuvo {cond_type}",node)
         self.visit(node.body)
 
     @multimethod
@@ -167,7 +163,7 @@ class Checker:
         if node.cond:
             cond_type = self.visit(node.cond)
             if cond_type != "boolean":
-                self.error("Condición de for debe ser boolean")
+                self.error("Condición de for debe ser boolean",node)
         if node.step: self.visit(node.step)
         self.visit(node.body)
 
@@ -177,7 +173,7 @@ class Checker:
         expected_ret = self.current_function
         
         if actual_ret != "error" and actual_ret != expected_ret:
-            self.error(f"Tipo de retorno incorrecto en función: se esperaba {expected_ret}, se obtuvo {actual_ret}")
+            self.error(f"Tipo de retorno incorrecto en función: se esperaba {expected_ret}, se obtuvo {actual_ret}",node)
 
     @multimethod
     def _visit(self, node: PrintStmt):
@@ -196,7 +192,7 @@ class Checker:
         l_type = self.visit(node.lval)
         r_type = self.visit(node.expr)
         if l_type and r_type and l_type != r_type:
-            self.error(f"Asignación incompatible: se esperaba {l_type}, se obtuvo {r_type}")
+            self.error(f"Asignación incompatible: se esperaba {l_type}, se obtuvo {r_type}",node)
         node.type = l_type
         return l_type
 
@@ -210,12 +206,12 @@ class Checker:
 
         # 🚨 Validación clave
         if not isinstance(left_type, str) or not isinstance(right_type, str):
-            self.error(f"Operación inválida: {left_type} {node.op} {right_type}")
+            self.error(f"Operación inválida: {left_type} {node.op} {right_type}",node)
             return "error"
 
         res = check_binop(left_type, node.op, right_type)
         if res is None:
-            self.error(f"Operación inválida: {left_type} {node.op} {right_type}")
+            self.error(f"Operación inválida: {left_type} {node.op} {right_type}",node)
             return "error"
 
         return res
@@ -225,7 +221,7 @@ class Checker:
         operand = self.visit(node.expr)
         result = check_unaryop(node.op, operand)
         if result is None:
-            self.error(f"Operador '{node.op}' no aplicable al tipo {operand}")
+            self.error(f"Operador '{node.op}' no aplicable al tipo {operand}",node)
             result = "error"
         node.type = result
         return result
@@ -365,3 +361,14 @@ class Checker:
             return self.get_type(datatype.ret_type)
 
         return "void"
+
+
+    def error(self, msg, node=None):
+            # Si nos pasan un nodo, extraemos su línea para el mensaje
+            if node and hasattr(node, 'lineno') and node.lineno > 0:
+                msg = f"Línea {node.lineno}: {msg}"
+
+            # Evitamos mensajes duplicados
+            if msg not in self.error_set:
+                self.errors.append(msg)
+                self.error_set.add(msg)
