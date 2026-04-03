@@ -79,10 +79,9 @@ expr_list ::= expr
 opt_expr ::= /* epsilon */
     | expr
 
-expr ::= expr1
-
 expr1 ::= lval '=' expr1
-    | expr2
+        | lval assign_op expr1
+        | expr2
 
 lval ::= 'ID'
     | 'ID' index

@@ -3,7 +3,9 @@ from dataclasses import dataclass
 from typing import List, Optional, Any
 
 class Node:
-    lineno: int = 0
+    def __init__(self):
+        self.lineno: int = 0
+        self.type = None
 
 # ==========================================
 # TIPOS (Types)
@@ -70,6 +72,11 @@ class IfStmt(Stmt):
     cond: 'Expr'
     then_b: Stmt
     else_b: Optional[Stmt] = None
+
+@dataclass 
+class WhileStmt(Stmt): 
+    cond: 'Expr'
+    body: Stmt
 
 @dataclass 
 class ForStmt(Stmt): 

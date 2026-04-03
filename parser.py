@@ -23,17 +23,30 @@ class Parser(sly.Parser):
 
     expected_shift_reduce = 1
     #Esto va a generar un archivo grammar.txt
-    debugfile = "grammar.txt"
+    debugfile = "additions/grammarAST.txt"
 
 # PROGRAMA
 #Esto crea el nodo raíz de todo el proyecto
-    @_("decl_list")
+    @_("top_list")
     def prog(self, p):
-        lineno = p.decl_list[0].lineno if p.decl_list else 0
-        #Hacer una distinción clara entre _L y Program, este ultimo crea los nodos pero _L los modifica
-        node = Program(p.decl_list)
+        lineno = p.top_list[0].lineno if p.top_list else 0
+        node = Program(p.top_list)
         node.lineno = lineno
         return node
+
+
+    @_('top')
+    def top_list(self, p):
+        return [p.top]
+
+    @_('top_list top')
+    def top_list(self, p):
+        return p.top_list + [p.top]
+
+
+    @_('decl','stmt')
+    def top(self, p):
+        return p[0]
 
     @_('decl')
     def decl_list(self, p):
@@ -68,9 +81,13 @@ class Parser(sly.Parser):
     def decl(self, p):
         return _L(FuncDecl(p.ID, p.type_func, p.opt_stmt_list), p.lineno)
     
-    @_('ID ":" type_func "=" "{" opt_stmt_list "}" ";"')
+    @_('ID ":" type_array ";"')
     def decl(self, p):
-        return _L(FuncDecl(p.ID, p.type_func, p.opt_stmt_list), p.lineno)
+        return _L(ArrayDecl(p.ID, p.type_array, None), p.lineno)
+
+    @_("ID ':' type_array '=' '{' expr_list '}' ';'")
+    def decl(self, p):
+        return _L(ArrayDecl(p.ID, p.type_array, p.expr_list), p.lineno)
 
 # SENTENCIAS
     @_('')
@@ -199,9 +216,10 @@ class Parser(sly.Parser):
     def expr_list(self, p):
         return [p.expr]
 
-    @_('expr "," expr_list')
+    @_('expr_list "," expr')
     def expr_list(self, p):
-        return [p.expr] + p.expr_list
+        p.expr_list.append(p.expr)
+        return p.expr_list
 
     @_('expr1')
     def expr(self, p):
@@ -210,6 +228,10 @@ class Parser(sly.Parser):
     @_('lval "=" expr1')
     def expr1(self, p):
         return _L(AssignExpr(p.lval, p.expr1), p.lineno)
+    
+    @_('lval ADDEQ expr1')
+    def expr1(self, p):
+        return _L(AssignExpr(p.lval,BinOp('+', p.lval, p.expr1)),p.lineno)
 
     @_('expr2')
     def expr1(self, p):
@@ -326,6 +348,10 @@ class Parser(sly.Parser):
     @_('ID')
     def factor(self, p):
         return _L(Location(p.ID), p.lineno)
+    
+    @_('ID index')
+    def factor(self, p):
+        return _L(ArrayAccess(p.ID, p.index), p.lineno)
 
     @_('INTEGER_LITERAL')
     def factor(self, p):
@@ -409,44 +435,54 @@ class Parser(sly.Parser):
         return _L(ArrayType(p.type_array), p.lineno)
 
 # ERROR
+    @_('stmt_list error ";"')
+    def stmt_list(self, p):
+        # Esto permite que el parser ignore una sentencia mal formada y siga con la siguiente
+        print(f"Error de sintaxis en línea {p.lineno}: saltando hasta el próximo ';' para continuar.")
+        return p.stmt_list
+
     def error(self, p):
         if p:
             error(f"Error de sintaxis cerca de '{p.value}'", p.lineno)
         else:
             error("Error de sintaxis al final del archivo", "EOF")
 
-if __name__ == "__main__":
-    import sys
-    from lexer import Lexer
+# if __name__ == "__main__":
+#     import sys
+#     from lexer import Lexer
 
-    if len(sys.argv) < 2:
-        print("Uso: python parser.py archivo.bminor")
-        sys.exit(1)
+#     if len(sys.argv) < 2:
+#         print("Uso: python parser.py archivo.bminor")
+#         sys.exit(1)
+#     #Filename es el directorio que busca del testeo, test/good0.bminor por ejemplo
+#     filename = sys.argv[1]
 
-    filename = sys.argv[1]
+#     with open(filename, "r", encoding="utf-8") as f:
+#         text = f.read()
 
-    with open(filename, "r", encoding="utf-8") as f:
-        text = f.read()
+#     lexer = Lexer()
+#     parser = Parser()
 
-    lexer = Lexer()
-    parser = Parser()
+#     ast = parser.parse(lexer.tokenize(text))
 
-    ast = parser.parse(lexer.tokenize(text))
+#     if ast is None:
+#         print("No se generó AST debido a problemas de sintaxis")
+#         sys.exit(1)
 
-    if ast is None:
-        print("No se generó AST debido a problemas de sintaxis")
-        sys.exit(1)
-
-    print("\nAST generado:\n")
+#     print("\nAST generado:\n")
     
-    from rich import print
-    from rich.pretty import pprint
-    from ASTVisualizer import ast_to_tree
-    from graphviz_ast import build_graphviz
-    from graphviz_ast import Digraph
+#     from rich import print
+#     from rich.pretty import pprint
+#     from visualizers import ASTVisualizer
+#     from visualizers import graphviz_ast
 
-    tree = ast_to_tree(ast)
-    print(tree)
+#     tree = ASTVisualizer.ast_to_tree(ast)
+#     print(tree)
 
-    dot = build_graphviz(ast)
-    dot.render("AST graphviz/ast", format="png", view=True)
+#     dot = graphviz_ast.build_graphviz(ast)
+#     dot.render("AST graphviz/ast", format="png", view=True)
+
+#     from checker import Checker
+
+#     checker = Checker()
+#     checker.check(ast)
