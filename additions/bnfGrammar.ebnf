@@ -3,17 +3,19 @@ prog ::= decl_list 'EOF'
 /* Declarations */
 
 decl_list ::= /* epsilon */
-    | decl decl_list
+    | (class_decl | decl) decl_list
 
-decl ::= 'ID' ':' type_simple ';'
-    | 'ID' ':' type_array_sized ';'
-    | 'ID' ':' type_func ';'
-    | 'ID' ':' type_class ';'
+simple_decl_list ::= /* epsilon */
+    | decl simple_decl_list
+
+decl ::= 'ID' ':' (type_simple | type_array_sized | type_func) ';'
     | decl_init
 
 decl_init ::= 'ID' ':' type_simple '=' expr ';'
-    | 'ID' ':' ( type_array_sized | type_class ) '=' '{' opt_expr_list '}' ';'
+    | 'ID' ':' type_array_sized '=' '[' opt_expr_list ']' ';'
     | 'ID' ':' type_func '=' '{' opt_stmt_list '}'
+
+class_decl ::= 'ID' ':' type_class '=' '{' simple_decl_list '}'
 
 /* Statements */
 
@@ -29,14 +31,13 @@ stmt ::= open_stmt
 closed_stmt ::= if_stmt_closed
     | for_stmt_closed
     | while_stmt_closed
-    | ternary_stmt
     | simple_stmt
 
 open_stmt ::= if_stmt_open
     | for_stmt_open
     | while_stmt_open
 
-if_cond ::= 'IF' '(' opt_expr ')'
+if_cond ::= 'IF' '(' expr ')'
 
 if_stmt_closed ::= if_cond closed_stmt 'ELSE' closed_stmt
 
@@ -53,9 +54,8 @@ while_stmt_open ::= 'WHILE' '(' expr ')' open_stmt
 
 while_stmt_closed ::= 'WHILE' '(' expr ')' closed_stmt
 
-ternary_stmt ::= opt_expr '?' closed_stmt ':' closed_stmt
-
 /* Simple statements are not recursive */
+
 simple_stmt ::= print_stmt
     | return_stmt
     | block_stmt
@@ -79,66 +79,53 @@ expr_list ::= expr
 opt_expr ::= /* epsilon */
     | expr
 
-expr1 ::= lval '=' expr1
-        | lval assign_op expr1
-        | expr2
+expr ::= lval assign_op expr // asignación
+    | expr2
 
 lval ::= 'ID'
     | 'ID' index
+    
+assign_op ::= '=' | '+=' | '-=' | '*=' | '/=' | '%='
 
-expr2 ::= expr2 'LOR' expr3
+expr2 ::= expr2 'LOR' expr3 // or
     | expr3
 
-expr3 ::= expr3 'LAND' expr4
+expr3 ::= expr3 'LAND' expr4 // and
     | expr4
 
-expr4 ::= expr4 'EQ' expr5
-    | expr4 'NE' expr5
-    | expr4 'LT' expr5
-    | expr4 'LE' expr5
-    | expr4 'GT' expr5
-    | expr4 'GE' expr5
+expr4 ::= expr4 comp_op expr5 // comparaciones
     | expr5
 
+comp_op ::= 'EQ' | 'NE' | 'LT' | 'LE' | 'GT' | 'GE'
 
-expr5 ::= expr5 '+' expr6
-    | expr5 '-' expr6
+expr5 ::= expr5 ('+' | '-') expr6 // sumas y restas
     | expr6
 
-expr6 ::= expr6 '*' expr7
-    | expr6 '/' expr7
-    | expr6 '%' expr7
+expr6 ::= expr6 ('*' | '/' | '%') expr7 // multiplicación, división y módulo
     | expr7
 
-expr7 ::= expr7 '^' expr8
+expr7 ::= expr7 '^' expr8 // Potencia
     | expr8
 
-expr8 ::= '-' expr8
-    | 'NOT' expr8
-    | expr9
-
-expr9 ::= expr9 'INC'
-    | expr9 'DEC'
+expr8 ::= ('-' | 'NOT') expr8 // negativo y negación
     | group
 
-assign_op ::= '+=' | '-=' | '*=' | '/='
+group ::= '(' expr ')' // paréntesis
+    | 'NEW'? func_call // nueva instancia de una clase o llamada de una función
+    | ternary_expr // Ternario
+    | 'ID' index // arreglo indexado
+    | incdec_expr // Incremento y decremento
+    | 'ID' '.' ('ID' | func_call) // atributos y métodos de clases
+    | factor // literales
 
-assign_expr ::= lval assign_op expr
+incdec_expr ::= 'ID' incdec_op
+    | incdec_op 'ID'
 
 incdec_op ::= '++' | '--'
 
-incdec_expr ::=
-      incdec_op lval
-    | lval incdec_op
+func_call ::= 'ID' '(' opt_expr_list ')'
 
-expr_plus ::= incdec_expr
-            | assign_expr
-            | expr
-
-group ::= '(' expr ')'
-    | 'ID' '(' opt_expr_list ')'
-    | 'ID' index
-    | factor
+ternary_expr ::= expr '?' expr ':' expr
 
 index_list ::= index_list index
 		| index
@@ -160,24 +147,16 @@ type_simple ::= 'INTEGER'
     | 'BOOLEAN'
     | 'CHAR'
     | 'STRING'
+    | 'ID'
     | 'VOID'
 
-type_array ::= 'ARRAY' '[' ']' type_simple
-    | 'ARRAY' '[' ']' type_array
-    | 'ARRAY' '[' ']' type_class
+type_array ::= 'ARRAY' '[' ']' (type_simple | type_array)
 
-type_array_sized ::= 'ARRAY' index type_simple
-    | 'ARRAY' index type_array_sized
-    | 'ARRAY' index type_class
+type_array_sized ::= 'ARRAY' index (type_simple | type_array_sized)
 
-type_func ::= 'FUNCTION' type_simple '(' opt_param_list ')'
-    | 'FUNCTION' type_array_sized '(' opt_param_list ')'
-    | 'FUNCTION' type_class '(' opt_param_list ')'
+type_func ::= 'FUNCTION' (type_simple | type_array_sized) '(' opt_param_list ')'
     
-type_class ::= 'CLASS' '(' parent_class ')'
-
-parent_class ::= /* epsilon */
-    | 'ID'
+type_class ::= 'CLASS' ('EXTENDS' 'ID')?
 
 opt_param_list ::= /* epsilon */
     | param_list
@@ -185,7 +164,4 @@ opt_param_list ::= /* epsilon */
 param_list ::= param
     | param_list ',' param
 
-param ::= 'ID' ':' type_simple
-    | 'ID' ':' type_array
-    | 'ID' ':' type_array_sized
-    | 'ID' ':' type_class
+param ::= 'ID' ':' (type_simple | type_array | type_array_sized)
