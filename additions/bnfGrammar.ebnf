@@ -59,6 +59,7 @@ while_stmt_closed ::= 'WHILE' '(' expr ')' closed_stmt
 simple_stmt ::= print_stmt
     | return_stmt
     | block_stmt
+    | ('BREAK' | 'CONTINUE')
     | decl
     | expr ';'
 

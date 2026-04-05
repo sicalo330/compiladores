@@ -2,42 +2,39 @@
 # -*- coding: utf-8 -*-
 
 import sly
-import sly
 
 from errors import error, errors_detected
 
-
 class Lexer(sly.Lexer):
-	tokens = {
-		# keywords
-		ARRAY, AUTO, BOOLEAN, CHAR, CONSTANT,ELSE, FALSE, 
-		FLOAT, FOR, FUNCTION, IF, INTEGER, PRINT, RETURN,
-		STRING, TRUE, VOID, WHILE, BREAK, CONTINUE,
-		
-		# operator
+	tokens = { # keywords
+		ARRAY, AUTO, BOOLEAN, BREAK, CHAR, CLASS, CONSTANT,
+		CONTINUE, ELSE, FALSE, FLOAT, FOR, FUNCTION, IF,
+		INTEGER, NEW, PRINT, RETURN, STRING, TRUE, VOID, WHILE,
+
+		# operators
 		LT, LE, GT, GE, EQ, NE, LAND, LOR, INC, DEC,
-		
+
 		ADDEQ, SUBEQ, MULEQ, DIVEQ, MODEQ,
-		
+
 		# other tokens
-		ID, CHAR_LITERAL, FLOAT_LITERAL, INTEGER_LITERAL, STRING_LITERAL,
+		ID, CHAR_LITERAL, FLOAT_LITERAL, INTEGER_LITERAL, STRING_LITERAL
 	}
-	literals = '+-*/%^=:;,()[]{}!'
+	literals: str = '+-*/%^=:;,()[]{}!'
 
 	# ignore
-	ignore = ' \t\r'
+	ignore: str = ' \t\r'
 
 	# ignore newline
 	@_(r"\n+")
 	def ignore_newline(self, t):
 		#Por si se pregunta, esto es lo que se encarga de aumentar en uno el lineno teniendo en cuenta los saltos de línea
 		self.lineno += t.value.count('\n')
-		
+
 	# ignore comentarios
 	@_(r"\/\/[^\n]*")
 	def ignore_cppcomment(self, t):
 		pass
-		
+
 	@_(r"\/\*[^*]*\*(\*|[^*/][^*]*\*)*\/")
 	def ignore_comment(self, t):
 		self.lineno += t.value.count('\n')
@@ -57,24 +54,26 @@ class Lexer(sly.Lexer):
 	# Operadores Logicos
 	LAND = r'&&'
 	LOR  = r'\|\|'
-	
+
 	INC  = r'\+\+'
 	DEC  = r'--'
-	
+
 	ADDEQ = r'\+='
 	SUBEQ = r'-='
 	MULEQ = r'\*='
 	DIVEQ = r'/='
 	MODEQ = r'%='
-	
+
 	# Definicion de Tokens
-	ID   = r'[a-zA-Z_]\w*'
-	
+	ID    = r'[a-zA-Z_]\w*'
+
 	ID['array']    = ARRAY
 	ID['auto']     = AUTO
 	ID['boolean']  = BOOLEAN
+	ID['break']    = BREAK
 	ID['char']     = CHAR
 	ID['constant'] = CONSTANT
+	ID['continue'] = CONTINUE
 	ID['else']     = ELSE
 	ID['false']    = FALSE
 	ID['float']    = FLOAT
@@ -82,6 +81,7 @@ class Lexer(sly.Lexer):
 	ID['function'] = FUNCTION
 	#ID['func']     = FUNCTION #Si al probar bad4 del parser el profesor quiere que el error esté en func quitar esta línea
 	ID['if']       = IF
+	ID['new']      = NEW
 	ID['integer']  = INTEGER
 	ID['print']    = PRINT
 	ID['return']   = RETURN
@@ -89,29 +89,29 @@ class Lexer(sly.Lexer):
 	ID['true']     = TRUE
 	ID['void']     = VOID
 	ID['while']    = WHILE
-	ID['break']    = BREAK
-	ID['continue'] = CONTINUE
 
-	
+	# Char
 	@_(r"'([\x20-\x7E]|\\([abefnrtv\\'\"]|0x[0-9A-Fa-f]{2}))'")
 	def CHAR_LITERAL(self, t):
 		t.value = t.value[1:-1]
 		if t.value == '\\n': t.value = '\n'
 		return t
-	
+
 	@_(r"'.")
 	def malformed_char(self, t):
 		error(f"malformado CHAR", t.lineno)
-	
+
+	# Float
 	@_(r"\d*(\.\d+)?[eE][-+]?[1-9]\d*|\d*\.\d+")
 	def FLOAT_LITERAL(self, t):
 		t.value = float(t.value)
 		return t
-		
+
 	@_(r'(0\d+)((\.\d+(e[-+]?\d+)?)|(e[-+]?\d+))')
 	def malformed_float(self, t):
 		error(f"Literal de punto flotante '{t.value}' no sportado", t.lineno)
-		
+
+	# Integer
 	@_(r"[1-9]\d*|0")
 	def INTEGER_LITERAL(self, t):
 		t.value = int(t.value)
@@ -121,52 +121,50 @@ class Lexer(sly.Lexer):
 	def malformed_integer(self, t):
 		error(f"Literal entera '{t.value}' no sportado", t.lineno)
 
+	# String
 	@_(r'\"([^"\\]*(\\.[^"\\]*)*)\"')
 	def STRING_LITERAL(self, t):
 		t.value = t.value[1:-1]
 		return t
-	
+
 	def error(self, t):
 		error(f"Carcater Ilegal '{t.value[0]}'", t.lineno)
 		self.index += 1
 
-
-
 def tokenize(filename:str):
 	from rich.table   import Table
 	from rich.console import Console
-	
-	txt = open(filename, encoding='utf-8').read()
-	lex = Lexer()
 
-	table = Table(title='Análisis Léxico')
+	txt: str = open(filename, encoding='utf-8').read()
+	lex: Lexer = Lexer()
+
+	table: Table = Table(title='Análisis Léxico')
 	table.add_column('type')
 	table.add_column('value')
 	table.add_column('lineno', justify='right')
-	
+
 	for tok in lex.tokenize(txt):
-		value = tok.value if isinstance(tok.value, str) else str(tok.value)
+		value: str = tok.value if isinstance(tok.value, str) else str(tok.value)
 		table.add_row(tok.type, value, str(tok.lineno))
 		# print(tok)
 
 	if not errors_detected():
-		console = Console()
+		console: Console = Console()
 		console.print(table)
-
 
 if __name__ == '__main__':
 	import sys
-	
+
 	if sys.platform != 'ios':
-		
+
 		if len(sys.argv) != 2:
 			raise SystemExit("Usage: python glexer.py <filename>")
-		
+
 		filename = sys.argv[1]
-		
+
 	else:
 		from File_Picker import file_picker_dialog
-	
+
 		filename = file_picker_dialog(
 			title='Seleccionar una archivo',
 			root_dir='./test/cool/',
