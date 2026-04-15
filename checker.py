@@ -4,8 +4,9 @@ from typesys import check_binop, check_unaryop
 from multimethod import multimethod
 from model import *
 from rich import print
+from visitor import Visitor
 
-class Checker:
+class Checker(Visitor):
     def __init__(self):
             self.symtab = Symtab("global")
             self._func_stack = []  #Es necesario poner una lista para simular una pila de funciones, creo que será util para bad1
@@ -40,21 +41,6 @@ class Checker:
     # ==========================================
     # DISPATCH (USANDO MULTIMETHOD)
     # ==========================================
-    # Este método redirige a las implementaciones específicas de abajo
-    def visit(self, node):
-        if node is None:
-            return None
-
-        # 🚨 NO dejar pasar valores crudos
-        if not isinstance(node, Node):
-            return "error"
-
-        return self._visit(node)
-
-    @multimethod
-    def _visit(self, node: Node):
-        """Caso base para nodos no implementados explícitamente"""
-        return None
 
     @multimethod
     def _visit(self, node: Program):
