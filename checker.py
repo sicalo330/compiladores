@@ -43,6 +43,10 @@ class Checker(Visitor):
     # ==========================================
 
     @multimethod
+    def _visit(self, node: Node):
+        return None
+
+    @multimethod
     def _visit(self, node: Program):
         for decl in node.decls:
             if isinstance(decl, ExprStmt):

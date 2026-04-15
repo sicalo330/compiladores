@@ -1,4 +1,3 @@
-# visitor.py
 from multimethod import multimethod
 from model import Node
 
@@ -7,7 +6,7 @@ class Visitor:
         if node is None:
             return None
 
-        # Mantienes tu protección
+        # 🔥 ESTA LÍNEA ES LA CLAVE
         if not isinstance(node, Node):
             return "error"
 
@@ -15,5 +14,4 @@ class Visitor:
 
     @multimethod
     def _visit(self, node: Node):
-        """Caso base"""
         return None
