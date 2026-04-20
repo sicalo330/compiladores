@@ -28,44 +28,25 @@ class Parser(sly.Parser):
     debugfile = "additions/grammarAST.txt"
 
     #PROGRAMA
-    #Esto crea el nodo raíz de todo el proyecto
-    #todo esto de top y top_list lo comenté porque no lo entiendo y no creo que sea necesario ya que la gramática no tiene nada así - JJ
-
-    # @_("top_list")
-    # def prog(self, p):
-    #     lineno = p.top_list[0].lineno if p.top_list else 0
-    #     node = Program(p.top_list)
-    #     node.lineno = lineno
-    #     return node
-
-    # @_('top')
-    # def top_list(self, p):
-    #     return [p.top]
-
-    # @_('top_list top')
-    # def top_list(self, p):
-    #     return p.top_list + [p.top]
-
-    # @_('decl','stmt')
-    # def top(self, p):
-    #     return p[0]
-
-    @_("prog")
+    @_("decl_list")
     def prog(self, p):
-        ...
+        lineno = p.decl_list[0].lineno if p.decl_list else 0
+        node = Program(p.decl_list)
+        node.lineno = lineno
+        return node
 
 #LISTAS DE DECLARACIONES
-    @_('') 
+    @_('')
     def decl_list(self, p):
         pass
 
-    @_('decl_list decl') 
+    @_('decl_list decl')
     def decl_list(self, p):
-        return [p.decl] + p.decl_list
+        return p.decl_list + [p.decl]
     
-    @_('decl_list class_decl') 
+    @_('decl_list class_decl')
     def decl_list(self, p):
-        return [p.class_decl] + p.decl_list
+        return p.decl_list + [p.class_decl]
 
     @_('')
     def simple_decl_list(self, p):
@@ -73,7 +54,7 @@ class Parser(sly.Parser):
 
     @_('decl simple_decl_list')
     def simple_decl_list(self, p):
-        return [p.decl] + p.simple_decl_list
+        return p.simple_decl_list + [p.decl]
 
 # DECLARACIONES
     @_('ID ":" type_simple ";"')
@@ -88,25 +69,29 @@ class Parser(sly.Parser):
     def decl(self, p):
         return _L(FuncDecl(p.ID, p.type_func, None), p.lineno)
 
-    @_('ID ":" type_simple "=" expr ";"')
+    @_('decl_init')
     def decl(self, p):
+        return p.decl_init
+
+    @_('ID ":" type_simple "=" expr ";"')
+    def decl_init(self, p):
         return _L(VarDecl(p.ID, p.type_simple, p.expr), p.lineno)
 
-    @_("ID ':' type_array_sized '=' '{' expr_list '}' ';'")
-    def decl(self, p):
+    @_("ID ':' type_array_sized '=' '{' opt_expr_list '}' ';'")
+    def decl_init(self, p):
         return _L(ArrayDecl(p.ID, p.type_array_sized, p.expr_list), p.lineno)
 
     @_('ID ":" type_func "=" "{" opt_stmt_list "}"')
-    def decl(self, p):
+    def decl_init(self, p):
         return _L(FuncDecl(p.ID, p.type_func, p.opt_stmt_list), p.lineno)
-    
-    @_('ID ":" type_array ";"')
-    def decl(self, p):
-        return _L(ArrayDecl(p.ID, p.type_array, None), p.lineno)
 
-    @_("ID ':' type_array '=' '{' opt_expr_list '}' ';'")
-    def decl(self, p):
-        return _L(ArrayDecl(p.ID, p.type_array, p.expr_list), p.lineno)
+    @_("ID ':' CLASS '=' '{' simple_decl_list '}'")
+    def class_decl(self, p):
+        return _L(ClassDecl(p.ID, None, p.simple_decl_list), p.lineno)
+    
+    @_("ID ':' CLASS EXTENDS ID '=' '{' simple_decl_list '}'")
+    def class_decl(self, p):
+        return _L(ClassDecl(p[0], p[4], p.simple_decl_list), p.lineno)
 
 # SENTENCIAS
     @_('')
@@ -121,23 +106,25 @@ class Parser(sly.Parser):
     def stmt_list(self, p):
         return [p.stmt]
 
-    @_('stmt_list stmt') 
+    @_('stmt stmt_list') 
     def stmt_list(self, p):
         return p.stmt_list + [p.stmt]
 
     @_('open_stmt',
-        'closed_stmt')
+       'closed_stmt')
     def stmt(self, p):
         return p[0]
 
     @_('if_stmt_closed',
-        'for_stmt_closed',
-        'simple_stmt')
+       'for_stmt_closed',
+       'while_stmt_closed',
+       'simple_stmt')
     def closed_stmt(self, p):
         return p[0]
 
     @_('if_stmt_open',
-        'for_stmt_open')
+       'for_stmt_open',
+       'while_stmt_open')
     def open_stmt(self, p):
         return p[0]
 
@@ -187,10 +174,33 @@ class Parser(sly.Parser):
             p.lineno
         )
 
+# WHILE
+    @_('WHILE "(" expr ")" open_stmt')
+    def while_stmt_open(self, p):
+        return _L(
+            WhileStmt(
+                p.expr,
+                p.open_stmt
+            ),
+            p.lineno
+        )
+
+    @_('WHILE "(" expr ")" closed_stmt')
+    def while_stmt_closed(self, p):
+        return _L(
+            WhileStmt(
+                p.expr,
+                p.closed_stmt
+            ),
+            p.lineno
+        )
+
 # SENTENCIAS SIMPLES
     @_('print_stmt',
-        'return_stmt',
-        'block_stmt')
+       'return_stmt',
+       'block_stmt',
+       'BREAK',
+       'CONTINUE')
     def simple_stmt(self, p):
         return p[0]
 
@@ -216,14 +226,6 @@ class Parser(sly.Parser):
 
 # EXPRESIONES
     @_('')
-    def opt_expr(self, p):
-        return None
-
-    @_('expr')
-    def opt_expr(self, p):
-        return p.expr
-
-    @_('')
     def opt_expr_list(self, p):
         return []
 
@@ -233,37 +235,56 @@ class Parser(sly.Parser):
 
     @_('expr')
     def expr_list(self, p):
-        return [p.expr]
+        return p.expr
 
     @_('expr_list "," expr')
     def expr_list(self, p):
-        p.expr_list.append(p.expr)
-        return p.expr_list
-
-    @_('expr1')
-    def expr(self, p):
-        return p.expr1
-
-    @_('lval "=" expr1')
-    def expr1(self, p):
-        return _L(AssignExpr(p.lval, p.expr1), p.lineno)
+        return p.expr_list + [p.expr]
     
-    @_('lval ADDEQ expr1')
-    def expr1(self, p):
-        return _L(AssignExpr(p.lval,BinOp('+', p.lval, p.expr1)),p.lineno)
+    @_('')
+    def opt_expr(self, p):
+        return None
+
+    @_('expr')
+    def opt_expr(self, p):
+        return p.expr
+
+    @_('lval assign_op expr')
+    def expr(self, p):
+        if p[1][0] == '=':
+            return _L(AssignExpr(p.lval, p.expr), p.lineno)
+        else:
+            return _L(AssignExpr(p.lval,BinOp(p[1][0], p.lval, p.expr)),p.lineno)
 
     @_('expr2')
-    def expr1(self, p):
+    def expr(self, p):
         return p.expr2
+
+    @_('"="',
+       'ADDEQ',
+       'SUBEQ',
+       'MULEQ',
+       'DIVEQ',
+       'MODEQ')
+    def assign_op(self, p):
+        return p[0]
 
 # LVALUES
     @_('ID')
     def lval(self, p):
         return _L(Location(p.ID), p.lineno)
 
-    @_('ID index')
+    @_('ID index_list')
     def lval(self, p):
-        return _L(ArrayAccess(p.ID, p.index), p.lineno)
+        return _L(ArrayAccess(p.ID, p.index_list), p.lineno)
+    
+    @_('index_list index')
+    def index_list(self, p):
+        return p.index_list + [p.index]
+
+    @_('"[" expr "]"')
+    def index(self, p):
+        return p.expr
 
 # PRECEDENCIA OPERADORES
     @_('expr2 LOR expr3')
@@ -282,14 +303,18 @@ class Parser(sly.Parser):
     def expr3(self, p):
         return p.expr4
 
-    @_('expr4 LT expr5',
-        'expr4 LE expr5',
-        'expr4 GT expr5',
-        'expr4 GE expr5',
-        'expr4 EQ expr5',
-        'expr4 NE expr5')
+    @_('expr4 comp_op expr5')
     def expr4(self, p):
-        return _L(BinOp(p[1], p.expr4, p.expr5), p.lineno)
+        return _L(BinOp(p.comp_op, p.expr4, p.expr5), p.lineno)
+    
+    @_('EQ',
+       'NE',
+       'LT',
+       'LE',
+       'GT',
+       'GE')
+    def comp_op(self, p):
+        return p[0]
 
     @_('expr5')
     def expr4(self, p):
@@ -322,22 +347,57 @@ class Parser(sly.Parser):
     def expr7(self, p):
         return p.expr8
 
-# UNARIOS
     @_('"-" expr8',
-        '"!" expr8')
+       '"!" expr8')
     def expr8(self, p):
         return _L(UnaryOp(p[0], p.expr8), p.lineno)
 
     @_('expr9')
     def expr8(self, p):
         return p.expr9
-
-# POSTFIX
-    @_('expr9 INC',
-        'expr9 DEC')
+    
+    @_('expr "?" expr ":" expr')
     def expr9(self, p):
-        return _L(PostfixOp(p[1], p.expr9), p.lineno)
+        return _L(TernOp(p.expr0, p.expr1, p.expr2))
+    
+    @_('ID index')
+    def expr9(self, p):
+        return _L(ArrayAccess(p.ID, p.index), p.lineno)
+    
+    @_('incdec_expr')
+    def expr9(self, p):
+        return p.incdec_expr
 
+    @_('ID incdec_op',
+       'incdec_op ID')
+    def incdec_expr(self, p):
+        return _L(AffixOp(p.incdec_op, p.ID), p.lineno)
+
+    @_('INC',
+       'DEC')
+    def incdec_op(self, p):
+        return p[0]
+
+    @_('ID "." ID')
+    def expr9(self, p):
+        return _L(AttrAccess(p.ID0, p.ID1), p.lineno)
+
+    @_('ID "." func_call')
+    def expr9(self, p):
+        return _L(AttrAccess(
+            p.ID,
+            FuncCall(
+                p.func_call.ID,
+                p.func_call.opt_expr_list
+                )
+            ),
+            p.lineno
+        )
+
+    @_('ID "(" opt_expr_list ")"')
+    def func_call(self, p):
+        return _L(FuncCall(p.ID, p.opt_expr_list), p.lineno)
+    
     @_('group')
     def expr9(self, p):
         return p.group
@@ -347,30 +407,23 @@ class Parser(sly.Parser):
     def group(self, p):
         return p.expr
 
-    @_('ID "(" opt_expr_list ")"')
+    @_('func_call',
+       'NEW func_call')
     def group(self, p):
-        return _L(FuncCall(p.ID, p.opt_expr_list), p.lineno)
+        return p.func_call
 
     @_('factor')
     def group(self, p):
         return p.factor
 
 # FACTORES
-    @_('"[" expr "]"')
-    def index(self, p):
-        return p.expr
-    
-    @_('"{" expr_list "}"')
-    def factor(self, p):
-        return p.expr_list
+    # @_('"{" expr_list "}"') # ?????
+    # def factor(self, p):
+    #     return p.expr_list
 
     @_('ID')
     def factor(self, p):
         return _L(Location(p.ID), p.lineno)
-    
-    @_('ID index')
-    def factor(self, p):
-        return _L(ArrayAccess(p.ID, p.index), p.lineno)
 
     @_('INTEGER_LITERAL')
     def factor(self, p):
@@ -402,25 +455,25 @@ class Parser(sly.Parser):
         'BOOLEAN',
         'CHAR',
         'STRING',
+        'ID',
         'VOID')
     def type_simple(self, p):
         return _L(SimpleType(p[0].lower()), p.lineno)
+    
+    @_('ARRAY "[" "]" type_simple',
+       'ARRAY "[" "]" type_array')
+    def type_array(self, p):
+        return _L(ArrayType(p[3]), p.lineno)
 
-    @_('ARRAY index type_simple')
+    @_('ARRAY index_list type_simple',
+       'ARRAY index_list type_array_sized')
     def type_array_sized(self, p):
-        return _L(ArraySizedType(p.index, p.type_simple), p.lineno)
+        return _L(ArraySizedType(p.index_list, p[2]), p.lineno)
 
-    @_('ARRAY index type_array_sized')
-    def type_array_sized(self, p):
-        return _L(ArraySizedType(p.index, p.type_array_sized), p.lineno)
-
-    @_('FUNCTION type_simple "(" opt_param_list ")"')
+    @_('FUNCTION type_simple "(" opt_param_list ")"',
+       'FUNCTION type_array_sized "(" opt_param_list ")"')
     def type_func(self, p):
-        return _L(FuncType(p.type_simple, p.opt_param_list), p.lineno)
-
-    @_('FUNCTION type_array_sized "(" opt_param_list ")"')
-    def type_func(self, p):
-        return _L(FuncType(p.type_array_sized, p.opt_param_list), p.lineno)
+        return _L(FuncType(p[1], p.opt_param_list), p.lineno)
 
 # PARAMETROS
     @_('')
@@ -445,14 +498,6 @@ class Parser(sly.Parser):
     def param(self, p):
         return _L(Param(p.ID, p[2]), p.lineno)
 
-    @_('ARRAY "[" "]" type_simple')
-    def type_array(self, p):
-        return _L(ArrayType(p.type_simple), p.lineno)
-
-    @_('ARRAY "[" "]" type_array')
-    def type_array(self, p):
-        return _L(ArrayType(p.type_array), p.lineno)
-
 # ERROR
     @_('stmt_list error ";"')
     def stmt_list(self, p):
@@ -460,7 +505,7 @@ class Parser(sly.Parser):
         print(f"Error de sintaxis en línea {p.lineno}: saltando hasta el próximo ';' para continuar.")
         return p.stmt_list
 
-    def error(self, p):
+    def error(self, p): # Esto hay que mejorarlo mucho
         if p:
             error(f"Error de sintaxis cerca de '{p.value}'", p.lineno)
         else:

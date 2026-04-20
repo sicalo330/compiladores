@@ -1,6 +1,6 @@
 prog ::= decl_list 'EOF'
 
-/* Declarations */
+/* Declaraciones */
 
 decl_list ::= /* epsilon */
     | (class_decl | decl) decl_list
@@ -17,7 +17,7 @@ decl_init ::= 'ID' ':' type_simple '=' expr ';'
 
 class_decl ::= 'ID' ':' 'CLASS' ('EXTENDS' 'ID')? '=' '{' simple_decl_list '}'
 
-/* Statements */
+/* Sentencias */
 
 opt_stmt_list ::= /* epsilon */
     | stmt_list
@@ -54,7 +54,7 @@ while_stmt_open ::= 'WHILE' '(' expr ')' open_stmt
 
 while_stmt_closed ::= 'WHILE' '(' expr ')' closed_stmt
 
-/* Simple statements are not recursive */
+/* Las sentencias simples no son recursivas */
 
 simple_stmt ::= print_stmt
     | return_stmt
@@ -69,7 +69,7 @@ return_stmt ::= 'RETURN' opt_expr ';'
 
 block_stmt ::= '{' stmt_list '}'
 
-/* Expressions */
+/* Expresiones */
 
 opt_expr_list ::= /* epsilon */
     | expr_list
@@ -84,8 +84,11 @@ expr ::= lval assign_op expr // asignación
     | expr2
 
 lval ::= 'ID'
-    | 'ID' index
-    
+    | 'ID' index_list
+
+index_list ::= index_list index
+		| index
+
 assign_op ::= '=' | '+=' | '-=' | '*=' | '/=' | '%='
 
 expr2 ::= expr2 'LOR' expr3 // or
@@ -109,15 +112,17 @@ expr7 ::= expr7 '^' expr8 // Potencia
     | expr8
 
 expr8 ::= ('-' | 'NOT') expr8 // negativo y negación
-    | group
+    | expr9
 
-group ::= '(' expr ')' // paréntesis
-    | 'NEW'? func_call // nueva instancia de una clase o llamada de una función
-    | ternary_expr // Ternario
-    | 'ID' index // arreglo indexado
+expr9 ::= ternary_expr // Ternario
+    | 'ID' index_list // arreglo indexado
     | incdec_expr // Incremento y decremento
     | 'ID' '.' ('ID' | func_call) // atributos y métodos de clases
-    | factor // literales
+    | group
+
+ternary_expr ::= expr '?' expr ':' expr
+
+index ::= '[' expr ']'
 
 incdec_expr ::= 'ID' incdec_op
     | incdec_op 'ID'
@@ -126,12 +131,9 @@ incdec_op ::= '++' | '--'
 
 func_call ::= 'ID' '(' opt_expr_list ')'
 
-ternary_expr ::= expr '?' expr ':' expr
-
-index_list ::= index_list index
-		| index
-
-index ::= '[' expr ']'
+group ::= '(' expr ')' // paréntesis
+    | 'NEW'? func_call // nueva instancia de una clase o llamada de una función
+    | factor // literales
 
 factor ::= 'ID'
     | 'INTEGER_LITERAL'
@@ -153,9 +155,11 @@ type_simple ::= 'INTEGER'
 
 type_array ::= 'ARRAY' '[' ']' (type_simple | type_array)
 
-type_array_sized ::= 'ARRAY' index (type_simple | type_array_sized)
+type_array_sized ::= 'ARRAY' index_list (type_simple | type_array_sized)
 
 type_func ::= 'FUNCTION' (type_simple | type_array_sized) '(' opt_param_list ')'
+
+/* Parámetros */
 
 opt_param_list ::= /* epsilon */
     | param_list

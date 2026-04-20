@@ -20,7 +20,7 @@ class SimpleType(Type):
 
 @dataclass 
 class ArraySizedType(Type): 
-    size: 'Expr'
+    size: List[Expr]
     elem_type: Type
 
 @dataclass 
@@ -30,11 +30,7 @@ class ArrayType(Type):
 @dataclass 
 class FuncType(Type): 
     ret_type: Type
-    params: List['Param']
-
-@dataclass
-class ClassInheritance(Type): # ?
-    inherits: str
+    params: List[Param]
 
 @dataclass 
 class Param(Node): 
@@ -46,30 +42,35 @@ class Param(Node):
 # ==========================================
 @dataclass 
 class Program(Node): 
-    decls: List['Decl']
+    decls: List[Decls]
 
-class Decl(Node): pass
+class Decls(Node): pass # Agrupa las declaraciones comunes y las declaraciones de clases
 
-@dataclass 
+class Decl(Decls): pass
+
+@dataclass
 class VarDecl(Decl): 
     name: str
     datatype: Type
-    value: Optional['Expr'] = None
+    value: Optional[Expr] = None
 
 @dataclass 
 class ArrayDecl(Decl): 
     name: str
     datatype: Type
-    elements: Optional[List['Expr']] = None
+    elements: Optional[List[Expr]] = None
 
 @dataclass 
 class FuncDecl(Decl): 
     name: str
     datatype: Type
-    body: Optional[List['Stmt']] = None
+    body: Optional[List[Stmt]] = None
 
 @dataclass
-class ClassDecl(Decl):
+class ClassDecl(Decls):
+    name: str
+    inheritance: Optional[str]
+    content: Optional[List[Decl]]
 
 # ==========================================
 # SENTENCIAS (Statements)
@@ -78,29 +79,29 @@ class Stmt(Node): pass
 
 @dataclass 
 class IfStmt(Stmt): 
-    cond: 'Expr'
+    cond: Expr
     then_b: Stmt
     else_b: Optional[Stmt] = None
 
 @dataclass 
 class WhileStmt(Stmt): 
-    cond: 'Expr'
+    cond: Expr
     body: Stmt
 
 @dataclass 
 class ForStmt(Stmt): 
-    init: Optional['Expr']
-    cond: Optional['Expr']
-    step: Optional['Expr']
+    init: Optional[Expr]
+    cond: Optional[Expr]
+    step: Optional[Expr]
     body: Stmt
 
 @dataclass 
 class PrintStmt(Stmt): 
-    exprs: List['Expr']
+    exprs: List[Expr]
 
 @dataclass 
 class ReturnStmt(Stmt): 
-    expr: Optional['Expr']
+    expr: Optional[Expr]
 
 @dataclass 
 class BlockStmt(Stmt): 
@@ -108,21 +109,20 @@ class BlockStmt(Stmt):
 
 @dataclass 
 class ExprStmt(Stmt): 
-    expr: 'Expr'
+    expr: Expr
 
 # ==========================================
 # EXPRESIONES (Expressions)
 # ==========================================
-class Expr(Node): pass
+class Expr(Node): pass # No entiendo por qué al usar Expr como tipo de dato se pone entre comillas pero no con algo como Stmt. Eliminé las comillas
 
 @dataclass 
 class AssignExpr(Expr): 
-    lval: 'Expr'
+    lval: Expr
     expr: Expr
 
 @dataclass
 class TernOp(Expr):
-    op: str
     cond: Expr
     then_b: Expr
     else_b: Expr
@@ -139,7 +139,7 @@ class UnaryOp(Expr):
     expr: Expr
 
 @dataclass 
-class PostfixOp(Expr): 
+class AffixOp(Expr): # Ahora considera tanto notación prefijo como sufijo
     op: str
     expr: Expr
 
@@ -150,12 +150,17 @@ class Location(Expr):
 @dataclass 
 class ArrayAccess(Expr): 
     name: str
-    index: Expr
+    index_list: List[Expr]
 
 @dataclass 
 class FuncCall(Expr): 
     name: str
     args: List[Expr]
+
+@dataclass
+class AttrAccess(Expr):
+    class_: str
+    attr: str | FuncCall
 
 @dataclass 
 class Literal(Expr): 
