@@ -15,7 +15,7 @@ decl_init ::= 'ID' ':' type_simple '=' expr ';'
     | 'ID' ':' type_array_sized '=' '[' opt_expr_list ']' ';'
     | 'ID' ':' type_func '=' '{' opt_stmt_list '}'
 
-class_decl ::= 'ID' ':' type_class '=' '{' simple_decl_list '}'
+class_decl ::= 'ID' ':' 'CLASS' ('EXTENDS' 'ID')? '=' '{' simple_decl_list '}'
 
 /* Statements */
 
@@ -156,8 +156,6 @@ type_array ::= 'ARRAY' '[' ']' (type_simple | type_array)
 type_array_sized ::= 'ARRAY' index (type_simple | type_array_sized)
 
 type_func ::= 'FUNCTION' (type_simple | type_array_sized) '(' opt_param_list ')'
-    
-type_class ::= 'CLASS' ('EXTENDS' 'ID')?
 
 opt_param_list ::= /* epsilon */
     | param_list

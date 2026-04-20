@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from typing import List, Optional, Any
 
+# TODO implementar modelos para las clases, el operador ternario, 
+
 class Node:
     def __init__(self):
         self.lineno: int = 0
@@ -29,6 +31,10 @@ class ArrayType(Type):
 class FuncType(Type): 
     ret_type: Type
     params: List['Param']
+
+@dataclass
+class ClassInheritance(Type): # ?
+    inherits: str
 
 @dataclass 
 class Param(Node): 
@@ -61,6 +67,9 @@ class FuncDecl(Decl):
     name: str
     datatype: Type
     body: Optional[List['Stmt']] = None
+
+@dataclass
+class ClassDecl(Decl):
 
 # ==========================================
 # SENTENCIAS (Statements)
@@ -110,6 +119,13 @@ class Expr(Node): pass
 class AssignExpr(Expr): 
     lval: 'Expr'
     expr: Expr
+
+@dataclass
+class TernOp(Expr):
+    op: str
+    cond: Expr
+    then_b: Expr
+    else_b: Expr
 
 @dataclass 
 class BinOp(Expr): 

@@ -2,18 +2,17 @@
 # -*- coding: utf-8 -*-
 
 import sly
-
 from errors import error, errors_detected
 
 class Lexer(sly.Lexer):
-	tokens = { # keywords
+	tokens: set = {
+		# keywords
 		ARRAY, AUTO, BOOLEAN, BREAK, CHAR, CLASS, CONSTANT,
 		CONTINUE, ELSE, FALSE, FLOAT, FOR, FUNCTION, IF,
 		INTEGER, NEW, PRINT, RETURN, STRING, TRUE, VOID, WHILE,
 
 		# operators
-		LT, LE, GT, GE, EQ, NE, LAND, LOR, INC, DEC,
-
+		LT, LE, GT, GE, EQ, NE, LAND, LOR, INC, DEC, TERNARY, DOT,
 		ADDEQ, SUBEQ, MULEQ, DIVEQ, MODEQ,
 
 		# other tokens
@@ -44,19 +43,19 @@ class Lexer(sly.Lexer):
 		error("Comentario mal formado, sin cerrar", t.lineno)
 
 	# Operadores de relacion
-	LE   = r'<='
-	GE   = r'>='
-	EQ   = r'=='
-	NE   = r'!='
-	LT   = r'<'
-	GT   = r'>'
+	LE = r'<='
+	GE = r'>='
+	EQ = r'=='
+	NE = r'!='
+	LT = r'<'
+	GT = r'>'
 
 	# Operadores Logicos
 	LAND = r'&&'
 	LOR  = r'\|\|'
 
-	INC  = r'\+\+'
-	DEC  = r'--'
+	INC = r'\+\+'
+	DEC = r'--'
 
 	ADDEQ = r'\+='
 	SUBEQ = r'-='
@@ -64,22 +63,27 @@ class Lexer(sly.Lexer):
 	DIVEQ = r'/='
 	MODEQ = r'%='
 
+	TERNARY = r'\?'
+
+	DOT = r'\.'
+
 	# Definicion de Tokens
-	ID    = r'[a-zA-Z_]\w*'
+	ID = r'[a-zA-Z_]\w*'
 
 	ID['array']    = ARRAY
 	ID['auto']     = AUTO
 	ID['boolean']  = BOOLEAN
 	ID['break']    = BREAK
 	ID['char']     = CHAR
+	ID['class']    = CLASS
 	ID['constant'] = CONSTANT
 	ID['continue'] = CONTINUE
 	ID['else']     = ELSE
+	ID['extends']  = EXTENDS
 	ID['false']    = FALSE
 	ID['float']    = FLOAT
 	ID['for']      = FOR
-	ID['function'] = FUNCTION
-	#ID['func']     = FUNCTION #Si al probar bad4 del parser el profesor quiere que el error esté en func quitar esta línea
+	ID['function'] = FUNCTION	
 	ID['if']       = IF
 	ID['new']      = NEW
 	ID['integer']  = INTEGER
@@ -119,7 +123,7 @@ class Lexer(sly.Lexer):
 
 	@_(r'0\d+')
 	def malformed_integer(self, t):
-		error(f"Literal entera '{t.value}' no sportado", t.lineno)
+		error(f"Literal entero '{t.value}' no sportado", t.lineno)
 
 	# String
 	@_(r'\"([^"\\]*(\\.[^"\\]*)*)\"')
@@ -131,7 +135,7 @@ class Lexer(sly.Lexer):
 		error(f"Carcater Ilegal '{t.value[0]}'", t.lineno)
 		self.index += 1
 
-def tokenize(filename:str):
+def tokenize(filename: str) -> None:
 	from rich.table   import Table
 	from rich.console import Console
 

@@ -5,6 +5,8 @@ from lexer import Lexer
 from errors import error
 from model import *
 
+#TODO reducir la cantidad innecesariamente alta de métodos que no se ajustan bien a la gramática
+
 #Esto agrega número de línea a cada nodo del AST, sierve para errores semánticos y debug
 def _L(node, lineno):
     node.lineno = lineno if lineno else 0
@@ -12,9 +14,8 @@ def _L(node, lineno):
 
 #Aquí se define la gramática del parser.py
 class Parser(sly.Parser):
-    #Por así decirlo los tokens se declaran aquó usando la clase lexer.py
+    #Los tokens se declaran aquí usando la variable tokens de la clase lexer en lexer.py
     tokens = Lexer.tokens
-    #¿Esto de abajo es necesario?
     start = 'prog'
 
     #Esto muestra los errores
@@ -22,39 +23,57 @@ class Parser(sly.Parser):
     log.setLevel(logging.ERROR)
 
     expected_shift_reduce = 1
+
     #Esto va a generar un archivo grammar.txt
     debugfile = "additions/grammarAST.txt"
 
-# PROGRAMA
-#Esto crea el nodo raíz de todo el proyecto
-    @_("top_list")
+    #PROGRAMA
+    #Esto crea el nodo raíz de todo el proyecto
+    #todo esto de top y top_list lo comenté porque no lo entiendo y no creo que sea necesario ya que la gramática no tiene nada así - JJ
+
+    # @_("top_list")
+    # def prog(self, p):
+    #     lineno = p.top_list[0].lineno if p.top_list else 0
+    #     node = Program(p.top_list)
+    #     node.lineno = lineno
+    #     return node
+
+    # @_('top')
+    # def top_list(self, p):
+    #     return [p.top]
+
+    # @_('top_list top')
+    # def top_list(self, p):
+    #     return p.top_list + [p.top]
+
+    # @_('decl','stmt')
+    # def top(self, p):
+    #     return p[0]
+
+    @_("prog")
     def prog(self, p):
-        lineno = p.top_list[0].lineno if p.top_list else 0
-        node = Program(p.top_list)
-        node.lineno = lineno
-        return node
+        ...
 
-
-    @_('top')
-    def top_list(self, p):
-        return [p.top]
-
-    @_('top_list top')
-    def top_list(self, p):
-        return p.top_list + [p.top]
-
-
-    @_('decl','stmt')
-    def top(self, p):
-        return p[0]
-
-    @_('decl')
+#LISTAS DE DECLARACIONES
+    @_('') 
     def decl_list(self, p):
-        return [p.decl]
+        pass
 
     @_('decl_list decl') 
     def decl_list(self, p):
-        return p.decl_list + [p.decl]
+        return [p.decl] + p.decl_list
+    
+    @_('decl_list class_decl') 
+    def decl_list(self, p):
+        return [p.class_decl] + p.decl_list
+
+    @_('')
+    def simple_decl_list(self, p):
+        pass
+
+    @_('decl simple_decl_list')
+    def simple_decl_list(self, p):
+        return [p.decl] + p.simple_decl_list
 
 # DECLARACIONES
     @_('ID ":" type_simple ";"')
@@ -69,9 +88,9 @@ class Parser(sly.Parser):
     def decl(self, p):
         return _L(FuncDecl(p.ID, p.type_func, None), p.lineno)
 
-    @_('ID ":" type_simple "=" expr1 ";"')
+    @_('ID ":" type_simple "=" expr ";"')
     def decl(self, p):
-        return _L(VarDecl(p.ID, p.type_simple, p.expr1), p.lineno)
+        return _L(VarDecl(p.ID, p.type_simple, p.expr), p.lineno)
 
     @_("ID ':' type_array_sized '=' '{' expr_list '}' ';'")
     def decl(self, p):
@@ -85,7 +104,7 @@ class Parser(sly.Parser):
     def decl(self, p):
         return _L(ArrayDecl(p.ID, p.type_array, None), p.lineno)
 
-    @_("ID ':' type_array '=' '{' expr_list '}' ';'")
+    @_("ID ':' type_array '=' '{' opt_expr_list '}' ';'")
     def decl(self, p):
         return _L(ArrayDecl(p.ID, p.type_array, p.expr_list), p.lineno)
 
@@ -107,18 +126,18 @@ class Parser(sly.Parser):
         return p.stmt_list + [p.stmt]
 
     @_('open_stmt',
-       'closed_stmt')
+        'closed_stmt')
     def stmt(self, p):
         return p[0]
 
     @_('if_stmt_closed',
-       'for_stmt_closed',
-       'simple_stmt')
+        'for_stmt_closed',
+        'simple_stmt')
     def closed_stmt(self, p):
         return p[0]
 
     @_('if_stmt_open',
-       'for_stmt_open')
+        'for_stmt_open')
     def open_stmt(self, p):
         return p[0]
 
@@ -170,8 +189,8 @@ class Parser(sly.Parser):
 
 # SENTENCIAS SIMPLES
     @_('print_stmt',
-       'return_stmt',
-       'block_stmt')
+        'return_stmt',
+        'block_stmt')
     def simple_stmt(self, p):
         return p[0]
 
@@ -264,11 +283,11 @@ class Parser(sly.Parser):
         return p.expr4
 
     @_('expr4 LT expr5',
-       'expr4 LE expr5',
-       'expr4 GT expr5',
-       'expr4 GE expr5',
-       'expr4 EQ expr5',
-       'expr4 NE expr5')
+        'expr4 LE expr5',
+        'expr4 GT expr5',
+        'expr4 GE expr5',
+        'expr4 EQ expr5',
+        'expr4 NE expr5')
     def expr4(self, p):
         return _L(BinOp(p[1], p.expr4, p.expr5), p.lineno)
 
@@ -277,7 +296,7 @@ class Parser(sly.Parser):
         return p.expr5
 
     @_('expr5 "+" expr6',
-       'expr5 "-" expr6')
+        'expr5 "-" expr6')
     def expr5(self, p):
         return _L(BinOp(p[1], p.expr5, p.expr6), p.lineno)
 
@@ -286,8 +305,8 @@ class Parser(sly.Parser):
         return p.expr6
 
     @_('expr6 "*" expr7',
-       'expr6 "/" expr7',
-       'expr6 "%" expr7')
+        'expr6 "/" expr7',
+        'expr6 "%" expr7')
     def expr6(self, p):
         return _L(BinOp(p[1], p.expr6, p.expr7), p.lineno)
 
@@ -305,7 +324,7 @@ class Parser(sly.Parser):
 
 # UNARIOS
     @_('"-" expr8',
-       '"!" expr8')
+        '"!" expr8')
     def expr8(self, p):
         return _L(UnaryOp(p[0], p.expr8), p.lineno)
 
@@ -315,7 +334,7 @@ class Parser(sly.Parser):
 
 # POSTFIX
     @_('expr9 INC',
-       'expr9 DEC')
+        'expr9 DEC')
     def expr9(self, p):
         return _L(PostfixOp(p[1], p.expr9), p.lineno)
 
@@ -379,11 +398,11 @@ class Parser(sly.Parser):
 
 # TIPOS
     @_('INTEGER',
-       'FLOAT',
-       'BOOLEAN',
-       'CHAR',
-       'STRING',
-       'VOID')
+        'FLOAT',
+        'BOOLEAN',
+        'CHAR',
+        'STRING',
+        'VOID')
     def type_simple(self, p):
         return _L(SimpleType(p[0].lower()), p.lineno)
 
@@ -421,8 +440,8 @@ class Parser(sly.Parser):
         return [p.param] + p.param_list
 
     @_('ID ":" type_simple',
-       'ID ":" type_array_sized',
-       'ID ":" type_array')
+        'ID ":" type_array_sized',
+        'ID ":" type_array')
     def param(self, p):
         return _L(Param(p.ID, p[2]), p.lineno)
 
