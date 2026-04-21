@@ -124,8 +124,8 @@ class AssignExpr(Expr):
 @dataclass
 class TernOp(Expr):
     cond: Expr
-    then_b: Expr
-    else_b: Expr
+    then_r: Expr
+    else_r: Expr
 
 @dataclass 
 class BinOp(Expr): 

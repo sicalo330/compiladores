@@ -7,18 +7,18 @@ from errors import error, errors_detected
 class Lexer(sly.Lexer):
 	tokens: set = {
 		# keywords
-		ARRAY, AUTO, BOOLEAN, BREAK, CHAR, CLASS, CONSTANT,
-		CONTINUE, ELSE, FALSE, FLOAT, FOR, FUNCTION, IF,
+		ARRAY, BOOLEAN, BREAK, CHAR, CLASS, CONSTANT,
+		CONTINUE, ELSE, EXTENDS, FALSE, FLOAT, FOR, FUNCTION, IF,
 		INTEGER, NEW, PRINT, RETURN, STRING, TRUE, VOID, WHILE,
 
 		# operators
-		LT, LE, GT, GE, EQ, NE, LAND, LOR, INC, DEC, TERNARY, DOT,
+		LT, LE, GT, GE, EQ, NE, LAND, LOR, INC, DEC,
 		ADDEQ, SUBEQ, MULEQ, DIVEQ, MODEQ,
 
 		# other tokens
 		ID, CHAR_LITERAL, FLOAT_LITERAL, INTEGER_LITERAL, STRING_LITERAL
 	}
-	literals: str = '+-*/%^=:;,()[]{}!'
+	literals: str = '+-*/%^=:;,()[]{}!?'
 
 	# ignore
 	ignore: str = ' \t\r'
@@ -63,15 +63,10 @@ class Lexer(sly.Lexer):
 	DIVEQ = r'/='
 	MODEQ = r'%='
 
-	TERNARY = r'\?'
-
-	DOT = r'\.'
-
 	# Definicion de Tokens
 	ID = r'[a-zA-Z_]\w*'
 
 	ID['array']    = ARRAY
-	ID['auto']     = AUTO
 	ID['boolean']  = BOOLEAN
 	ID['break']    = BREAK
 	ID['char']     = CHAR

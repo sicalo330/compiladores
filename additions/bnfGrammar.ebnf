@@ -83,11 +83,11 @@ opt_expr ::= /* epsilon */
 expr ::= lval assign_op expr // asignación
     | expr2
 
-lval ::= 'ID'
-    | 'ID' index_list
+lval ::= 'ID' index_list?
 
-index_list ::= index_list index
-		| index
+index_list ::= index index_list?
+
+index ::= '[' expr ']'
 
 assign_op ::= '=' | '+=' | '-=' | '*=' | '/=' | '%='
 
@@ -121,8 +121,6 @@ expr9 ::= ternary_expr // Ternario
     | group
 
 ternary_expr ::= expr '?' expr ':' expr
-
-index ::= '[' expr ']'
 
 incdec_expr ::= 'ID' incdec_op
     | incdec_op 'ID'

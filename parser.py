@@ -38,19 +38,19 @@ class Parser(sly.Parser):
 #LISTAS DE DECLARACIONES
     @_('')
     def decl_list(self, p):
-        pass
+        return []
 
-    @_('decl_list decl')
+    @_('decl decl_list')
     def decl_list(self, p):
         return p.decl_list + [p.decl]
     
-    @_('decl_list class_decl')
+    @_('class_decl decl_list')
     def decl_list(self, p):
         return p.decl_list + [p.class_decl]
 
     @_('')
     def simple_decl_list(self, p):
-        pass
+        return []
 
     @_('decl simple_decl_list')
     def simple_decl_list(self, p):
@@ -235,7 +235,7 @@ class Parser(sly.Parser):
 
     @_('expr')
     def expr_list(self, p):
-        return p.expr
+        return [p.expr]
 
     @_('expr_list "," expr')
     def expr_list(self, p):
@@ -249,7 +249,8 @@ class Parser(sly.Parser):
     def opt_expr(self, p):
         return p.expr
 
-    @_('lval assign_op expr')
+    @_('lval assign_op expr',
+       'CONSTANT lval assign_op expr')
     def expr(self, p):
         if p[1][0] == '=':
             return _L(AssignExpr(p.lval, p.expr), p.lineno)
@@ -278,9 +279,13 @@ class Parser(sly.Parser):
     def lval(self, p):
         return _L(ArrayAccess(p.ID, p.index_list), p.lineno)
     
-    @_('index_list index')
+    @_('index index_list')
     def index_list(self, p):
         return p.index_list + [p.index]
+    
+    @_('index')
+    def index_list(self, p):
+        return p.index
 
     @_('"[" expr "]"')
     def index(self, p):
@@ -417,10 +422,6 @@ class Parser(sly.Parser):
         return p.factor
 
 # FACTORES
-    # @_('"{" expr_list "}"') # ?????
-    # def factor(self, p):
-    #     return p.expr_list
-
     @_('ID')
     def factor(self, p):
         return _L(Location(p.ID), p.lineno)
@@ -490,7 +491,7 @@ class Parser(sly.Parser):
 
     @_('param "," param_list')
     def param_list(self, p):
-        return [p.param] + p.param_list
+        return p.param_list + [p.param]
 
     @_('ID ":" type_simple',
         'ID ":" type_array_sized',
