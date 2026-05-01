@@ -6,7 +6,6 @@ class Visitor:
         if node is None:
             return None
 
-        # 🔥 ESTA LÍNEA ES LA CLAVE
         if not isinstance(node, Node):
             return "error"
 

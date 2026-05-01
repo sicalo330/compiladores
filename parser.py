@@ -42,7 +42,7 @@ class Parser(sly.Parser):
 
     @_('decl decl_list')
     def decl_list(self, p):
-        return p.decl_list + [p.decl]
+        return [p.decl] + p.decl_list
     
     @_('class_decl decl_list')
     def decl_list(self, p):
@@ -108,7 +108,7 @@ class Parser(sly.Parser):
 
     @_('stmt stmt_list') 
     def stmt_list(self, p):
-        return p.stmt_list + [p.stmt]
+        return [p.stmt] + p.stmt_list
 
     @_('open_stmt',
        'closed_stmt')

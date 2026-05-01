@@ -1,4 +1,5 @@
 # model.py
+from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Any
 
@@ -13,6 +14,8 @@ class Node:
 # TIPOS (Types)
 # ==========================================
 class Type(Node): pass
+# No entiendo por qué al usar Expr como tipo de dato se pone entre comillas pero no con algo como Stmt. Eliminé las comillas
+class Expr(Node): pass 
 
 @dataclass 
 class SimpleType(Type): 
@@ -114,7 +117,6 @@ class ExprStmt(Stmt):
 # ==========================================
 # EXPRESIONES (Expressions)
 # ==========================================
-class Expr(Node): pass # No entiendo por qué al usar Expr como tipo de dato se pone entre comillas pero no con algo como Stmt. Eliminé las comillas
 
 @dataclass 
 class AssignExpr(Expr): 
