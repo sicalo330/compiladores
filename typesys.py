@@ -16,11 +16,18 @@ como punto de partida. Puede volver a refactorizar el sistema de tipos
 más adelante.
 '''
 
-	
-typenames = { 'integer', 'float', 'boolean', 'char', 'string' }
+typenames: set[str] = {'integer', 'float', 'boolean', 'char', 'string'} # Cómo se añaden las clases? - JJ
 
 # Capabilities
-_bin_ops = {
+_tern_op: dict[tuple[str, str, str, str, str], str] = {
+	('boolean', '?', 'integer', ':', 'integer') : 'integer',
+	('boolean', '?', 'boolean', ':', 'boolean') : 'boolean',
+	('boolean', '?', 'char', ':', 'char') : 'char',
+	('boolean', '?', 'float', ':', 'float') : 'float',
+	('boolean', '?', 'string', ':', 'string') : 'string'
+}
+
+_bin_ops: dict[tuple[str, str, str], str] = {
 	# Integer operations
 	('integer', '+', 'integer') : 'integer',
 	('integer', '-', 'integer') : 'integer',
@@ -75,7 +82,7 @@ _bin_ops = {
 	('string', '=', 'string') : 'string',
 }
 
-_unary_ops = {
+_unary_ops: dict[tuple[str, str], str] = {
 	('+', 'integer') : 'integer',
 	('-', 'integer') : 'integer',
 	('^', 'integer') : 'integer',
@@ -90,22 +97,17 @@ _unary_ops = {
 # result type or None (if not supported). Type checker
 # uses this function.
 
-def loockup_type(name):
+def loockup_type(name: str) -> (str | None):
 	'''
 	Dado el nombre de un tipo primitivo, se busca el objeto "type" apropiado.
 	Para empezar, los tipos son solo nombres, pero mas adelante pueden ser
 	objetos mas avanzados.
 	'''
-	if name in typenames:
-		return name
-	else:
-		return None
-		
-# def check_binop(op, left_type, right_type):
-# 	return _bin_ops.get((left_type, op, right_type))
+	if name in typenames: return name
+	else: return None
 
-def check_binop(left, op, right): #Creo que el órden de estos parámetros está dando error con bad5, debería preguntarle al profe
-    return _bin_ops.get((left, op, right))
+def check_ternop(cond, then_r, else_r) -> (str | None): return _tern_op.get((cond, then_r, else_r))
 
-def check_unaryop(op, operand_type):
-	return _unary_ops.get((op, operand_type))
+def check_binop(left, op, right) -> (str | None): return _bin_ops.get((left, op, right)) #Creo que el órden de estos parámetros está dando error con bad5, debería preguntarle al profe
+
+def check_unaryop(op, operand_type) -> (str | None): return _unary_ops.get((op, operand_type))

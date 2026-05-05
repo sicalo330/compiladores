@@ -5,8 +5,6 @@ from lexer import Lexer
 from errors import error
 from model import *
 
-#TODO reducir la cantidad innecesariamente alta de métodos que no se ajustan bien a la gramática
-
 #Esto agrega número de línea a cada nodo del AST, sierve para errores semánticos y debug
 def _L(node, lineno):
     node.lineno = lineno if lineno else 0
@@ -28,33 +26,29 @@ class Parser(sly.Parser):
     debugfile = "additions/grammarAST.txt"
 
     #PROGRAMA
-    @_("decl_list")
+    @_("opt_decl_list")
     def prog(self, p):
-        lineno = p.decl_list[0].lineno if p.decl_list else 0
-        node = Program(p.decl_list)
+        lineno = p.opt_decl_list[0].lineno if p.opt_decl_list else 0
+        node = Program(p.opt_decl_list)
         node.lineno = lineno
         return node
 
 #LISTAS DE DECLARACIONES
     @_('')
-    def decl_list(self, p):
+    def opt_decl_list(self, p):
         return []
+
+    @_('decl_list')
+    def opt_decl_list(self, p):
+        return p.decl_list
+    
+    @_('decl')
+    def decl_list(self, p):
+        return [p.decl]
 
     @_('decl decl_list')
     def decl_list(self, p):
         return [p.decl] + p.decl_list
-    
-    @_('class_decl decl_list')
-    def decl_list(self, p):
-        return p.decl_list + [p.class_decl]
-
-    @_('')
-    def simple_decl_list(self, p):
-        return []
-
-    @_('decl simple_decl_list')
-    def simple_decl_list(self, p):
-        return p.simple_decl_list + [p.decl]
 
 # DECLARACIONES
     @_('ID ":" type_simple ";"')
@@ -85,13 +79,13 @@ class Parser(sly.Parser):
     def decl_init(self, p):
         return _L(FuncDecl(p.ID, p.type_func, p.opt_stmt_list), p.lineno)
 
-    @_("ID ':' CLASS '=' '{' simple_decl_list '}'")
+    @_("ID ':' CLASS '=' '{' opt_decl_list '}'")
     def class_decl(self, p):
-        return _L(ClassDecl(p.ID, None, p.simple_decl_list), p.lineno)
+        return _L(ClassDecl(p.ID, None, p.decl_list), p.lineno)
     
-    @_("ID ':' CLASS EXTENDS ID '=' '{' simple_decl_list '}'")
+    @_("ID ':' CLASS EXTENDS ID '=' '{' opt_decl_list '}'")
     def class_decl(self, p):
-        return _L(ClassDecl(p[0], p[4], p.simple_decl_list), p.lineno)
+        return _L(ClassDecl(p[0], p[4], p.decl_list), p.lineno)
 
 # SENTENCIAS
     @_('')
@@ -285,7 +279,7 @@ class Parser(sly.Parser):
     
     @_('index')
     def index_list(self, p):
-        return p.index
+        return [p.index]
 
     @_('"[" expr "]"')
     def index(self, p):

@@ -1,12 +1,12 @@
-prog ::= decl_list 'EOF'
+prog ::= opt_decl_list 'EOF'
 
 /* Declaraciones */
 
-decl_list ::= /* epsilon */
-    | (class_decl | decl) decl_list
+opt_decl_list ::= /* epsilon */
+    | decl_list
 
-simple_decl_list ::= /* epsilon */
-    | decl simple_decl_list
+decl_list ::= decl
+    | decl decl_list
 
 decl ::= 'ID' ':' (type_simple | type_array_sized | type_func) ';'
     | decl_init
@@ -15,7 +15,7 @@ decl_init ::= 'ID' ':' type_simple '=' expr ';'
     | 'ID' ':' type_array_sized '=' '[' opt_expr_list ']' ';'
     | 'ID' ':' type_func '=' '{' opt_stmt_list '}'
 
-class_decl ::= 'ID' ':' 'CLASS' ('EXTENDS' 'ID')? '=' '{' simple_decl_list '}'
+class_decl ::= 'ID' ':' 'CLASS' ('EXTENDS' 'ID')? '=' '{' opt_decl_list '}'
 
 /* Sentencias */
 

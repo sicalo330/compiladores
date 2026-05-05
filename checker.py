@@ -14,49 +14,37 @@ class Checker(Visitor):
             self.errors = []
     
     @property
-    def current_function(self):
-        return self._func_stack[-1] if self._func_stack else None
+    def current_function(self): return self._func_stack[-1] if self._func_stack else None
 
     # ==========================================
     # ENTRY POINT
     # ==========================================
-    def check(self, node):
+    
+    def check(self, node: Node):
         self.visit(node)
         if self.errors:
             print("\n[red]Errores semánticos encontrados:[/red]")
-            for e in self.errors:
-                print(f" - {e}")
-            print("\n[red]Semantic check: FAILED[/red]")
-        else:
-            print("\n[green]Semantic check: SUCCESS[/green]")
-
-    # def error(self, msg, node=None):
-    #     if node:
-    #         msg = f"Línea {node.lineno}: {msg}"
-        
-    #     if msg not in self.error_set:
-    #         self.errors.append(msg)
-    #         self.error_set.add(msg)
+            for e in self.errors: print(f" - {e}")
+            print("\n[red]CHEQUEO SEMÁNTICO: ¡FALLIDO![/red]")
+        else: print("\n[green]CHEQUEO SEMÁNTICO: ¡EXITOSO![/green]")
 
     # ==========================================
     # DISPATCH (USANDO MULTIMETHOD)
     # ==========================================
 
     @multimethod
-    def _visit(self, node: Node):
-        return None
+    def _visit(self, node: Node): return None
 
     @multimethod
     def _visit(self, node: Program):
         for decl in node.decls:
-            if isinstance(decl, ExprStmt):
-                self.error(f"Línea {decl.lineno}: No se permiten expresiones en el nivel superior",node)
-            else:
-                self.visit(decl)
+            if isinstance(decl, ExprStmt): self.error(f"Línea {decl.lineno}: No se permiten expresiones en el nivel superior",node)
+            else: self.visit(decl)
 
     # ==========================================
     # DECLARATIONS
     # ==========================================
+
     @multimethod
     def _visit(self, node: VarDecl):
         target_type = self.get_type(node.datatype) 
@@ -69,8 +57,7 @@ class Checker(Visitor):
 
         if node.value:
             value_type = self.visit(node.value)
-            if target_type != value_type:
-                self.error(f"Asignación incompatible en '{node.name}': Se esperaba un {target_type} y se obtuvo un {value_type}",node)
+            if target_type != value_type: self.error(f"Asignación incompatible en '{node.name}': Se esperaba un {target_type} y se obtuvo un {value_type}",node)
         node.type = target_type
 
     @multimethod
@@ -82,17 +69,12 @@ class Checker(Visitor):
             self.error(f"Arreglo '{node.name}' ya declarado en este ámbito",node)
             return
 
-        # array_type = f"array<{base_type}>"
-        # self.symtab.add(node.name, {"kind": "array", "type": array_type})
-        # node.type = array_type
-
         self.symtab.add(node.name, {"kind": "array", "type": full_type})
 
         if node.elements:
             for el in node.elements:
                 actual_type = self.visit(el)
-                if actual_type != elem_type:
-                    self.error(f"Elemento inválido en array '{node.name}': se esperaba {elem_type}, se obtuvo {actual_type}",node)
+                if actual_type != elem_type: self.error(f"Elemento inválido en array '{node.name}': se esperaba {elem_type}, se obtuvo {actual_type}",node)
 
     @multimethod
     def _visit(self, node: FuncDecl):
@@ -104,25 +86,25 @@ class Checker(Visitor):
         old_tab = self.symtab
         self.symtab = Symtab(node.name, parent=old_tab)
         
-        for p in node.datatype.params:
-            # Esto llamará a _visit(self, node: Param)
-            self.visit(p) 
+        for p in node.datatype.params: self.visit(p) # Esto llamará a _visit(self, node: Param)
         
         if node.body:
-            for stmt in node.body:
-                self.visit(stmt)
+            for stmt in node.body: self.visit(stmt)
 
         self.symtab = old_tab
         self._func_stack.pop()
+    
+#TODO añadir chequeo de class decl
+
     # ==========================================
     # STATEMENTS
     # ==========================================
+
     @multimethod
     def _visit(self, node: BlockStmt):
         old = self.symtab
         self.symtab = Symtab("block", parent=old)
-        for stmt in node.stmts:
-            self.visit(stmt)
+        for stmt in node.stmts: self.visit(stmt)
         self.symtab = old
 
     @multimethod
@@ -130,30 +112,27 @@ class Checker(Visitor):
         cond_type = self.visit(node.cond)
 
         # 🚨 PROTECCIÓN: evitar valores crudos
-        if not isinstance(cond_type, str):
-            cond_type = "error"
+        if not isinstance(cond_type, str): cond_type = "error"
 
-        if cond_type != "boolean" and cond_type != "error":
-            self.error(f"La condición del if debe ser boolean, se obtuvo {cond_type}",node)
+        if cond_type != "boolean" and cond_type != "error": self.error(f"La condición del if debe ser boolean, se obtuvo {cond_type}",node)
         
         self.visit(node.then_b)
-        if node.else_b:
-            self.visit(node.else_b)
+        if node.else_b: self.visit(node.else_b)
 
     @multimethod
     def _visit(self, node: WhileStmt):
         cond_type = self.visit(node.cond)
-        if cond_type != "boolean":
-            self.error(f"La condición del while debe ser boolean, se obtuvo {cond_type}",node)
+        if cond_type != "boolean": self.error(f"La condición del while debe ser boolean, se obtuvo {cond_type}",node)
         self.visit(node.body)
 
     @multimethod
     def _visit(self, node: ForStmt):
         if node.init: self.visit(node.init)
+
         if node.cond:
             cond_type = self.visit(node.cond)
-            if cond_type != "boolean":
-                self.error("Condición de for debe ser boolean",node)
+            if cond_type != "boolean": self.error(f"La condición del for debe ser boolean, se obtuvo {cond_type}", node)
+
         if node.step: self.visit(node.step)
         self.visit(node.body)
 
@@ -167,22 +146,21 @@ class Checker(Visitor):
 
     @multimethod
     def _visit(self, node: PrintStmt):
-        for expr in node.exprs:
-            self.visit(expr)
+        for expr in node.exprs: self.visit(expr)
 
     @multimethod
-    def _visit(self, node: ExprStmt):
-        self.visit(node.expr)
+    def _visit(self, node: ExprStmt): self.visit(node.expr)
 
     # ==========================================
     # EXPRESSIONS
     # ==========================================
+
     @multimethod
     def _visit(self, node: AssignExpr):
         l_type = self.visit(node.lval)
         r_type = self.visit(node.expr)
-        if l_type and r_type and l_type != r_type:
-            self.error(f"Asignación incompatible: se esperaba {l_type}, se obtuvo {r_type}",node)
+
+        if l_type and r_type and l_type != r_type: self.error(f"Asignación incompatible: se esperaba {l_type}, se obtuvo {r_type}",node)
         node.type = l_type
         return l_type
 
@@ -191,12 +169,11 @@ class Checker(Visitor):
         left_type = self.visit(node.left)
         right_type = self.visit(node.right)
 
-        if left_type == "error" or right_type == "error":
-            return "error"
+        if left_type == "error" or right_type == "error": return "error"
 
         # 🚨 Validación clave
         if not isinstance(left_type, str) or not isinstance(right_type, str):
-            self.error(f"Operación inválida: {left_type} {node.op} {right_type}",node)
+            self.error(f"Operación {node.op} inválida: no puede operar a {left_type} con {right_type}", node)
             return "error"
 
         res = check_binop(left_type, node.op, right_type)
@@ -236,18 +213,16 @@ class Checker(Visitor):
         
         base_type = symbol.get("type", "error")
         
-        # 2. Validamos el índice (el índice sí es un nodo Expr, así que lo visitamos)
-        idx_type = self.visit(node.index)
-        if idx_type != "error" and idx_type != "integer":
-            self.error(f"El índice del arreglo debe ser integer, se obtuvo {idx_type}", node)
+        # 2. Validamos los índices (cada índice es un nodo Expr, así que los visitamos a cada uno)
+        for index in node.index_list:
+            idx_type = self.visit(index)
+            if idx_type != "error" and idx_type != "integer": self.error(f"El índice del arreglo debe ser integer, se obtuvo {idx_type}", node)
 
         # 3. Devolvemos el tipo de los ELEMENTOS
         # Si es un ArraySizedType o ArrayType, extraemos el elem_type
-        if isinstance(base_type, (ArrayType, ArraySizedType)):
-            return self.get_type(base_type.elem_type)
+        if isinstance(base_type, (ArrayType, ArraySizedType)): return self.get_type(base_type.elem_type)
         
-        if base_type != "error":
-            self.error(f"Se intentó indexar '{node.name}', que no es un arreglo", node)
+        if base_type != "error": self.error(f"Se intentó indexar '{node.name}', que no es un arreglo", node)
         
         return "error"
 
@@ -270,8 +245,7 @@ class Checker(Visitor):
         args = node.args
 
         # 2. Validar cantidad de argumentos
-        if len(params) != len(args):
-            self.error(f"La función '{node.name}' esperaba {len(params)} argumentos, recibió {len(args)}", node)
+        if len(params) != len(args): self.error(f"La función '{node.name}' esperaba {len(params)} argumentos, recibió {len(args)}", node)
 
         # 3. Validar tipos de argumentos
         # Usamos zip para comparar uno a uno hasta donde alcancen los parámetros
@@ -279,15 +253,13 @@ class Checker(Visitor):
             arg_type = self.visit(arg_expr)
             param_type = self.get_type(param.datatype)
 
-            if arg_type == "error":
-                continue
+            if arg_type == "error": continue
 
             # Lógica de compatibilidad de tipos
             compatible = False
             
             # Caso A: Tipos básicos idénticos (integer == integer, etc.)
-            if arg_type == param_type:
-                compatible = True
+            if arg_type == param_type: compatible = True
             
             # Caso B: Compatibilidad de Arreglos (ArraySizedType vs ArrayType)
             # Esto arregla el error de good7 donde pasas numbers (sized) a arr (unsized)
@@ -298,16 +270,13 @@ class Checker(Visitor):
                 arg_elem = self.get_type(arg_type.elem_type)
                 param_elem = self.get_type(param_type.elem_type)
                 
-                if arg_elem == param_elem:
-                    compatible = True
+                if arg_elem == param_elem: compatible = True
 
-            if not compatible:
-                self.error(f"Argumento {i+1} de '{node.name}' incorrecto: se esperaba {param_type}, se obtuvo {arg_type}", arg_expr)
+            if not compatible: self.error(f"Argumento {i+1} de '{node.name}' incorrecto: se esperaba {param_type}, se obtuvo {arg_type}", arg_expr)
 
         # 4. Visitar argumentos extra si los hay (para detectar errores internos en ellos)
         if len(args) > len(params):
-            for extra_arg in args[len(params):]:
-                self.visit(extra_arg)
+            for extra_arg in args[len(params):]: self.visit(extra_arg)
 
         # 5. Retornar el tipo de retorno de la función (esto permite encadenar expresiones)
         return self.get_type(func_type.ret_type)
@@ -339,26 +308,22 @@ class Checker(Visitor):
         return mapping.get(t, t)
 
     def get_type(self, datatype):
-        if isinstance(datatype, SimpleType):
-            return self.normalize_type(datatype.name)
+        if isinstance(datatype, SimpleType): return self.normalize_type(datatype.name)
 
-        if isinstance(datatype, (ArrayType, ArraySizedType)):
-                    # Esto es clave: para comparaciones de tipos básicos, 
-                    # a veces queremos saber el tipo base, pero para la 
-                    # estructura de datos, queremos el objeto completo.
-                    return datatype
-        if isinstance(datatype, FuncType):
-            return self.get_type(datatype.ret_type)
+        if isinstance(datatype, (ArrayType, ArraySizedType)): return datatype
+            # Esto es clave: para comparaciones de tipos básicos, 
+            # a veces queremos saber el tipo base, pero para la 
+            # estructura de datos, queremos el objeto completo.
+
+        if isinstance(datatype, FuncType): return self.get_type(datatype.ret_type)
 
         return "void"
 
-
     def error(self, msg, node=None):
-            # Si nos pasan un nodo, extraemos su línea para el mensaje
-            if node and hasattr(node, 'lineno') and node.lineno > 0:
-                msg = f"Línea {node.lineno}: {msg}"
+        # Si nos pasan un nodo, extraemos su línea para el mensaje
+        if node and hasattr(node, 'lineno') and node.lineno > 0: msg = f"Línea {node.lineno}: {msg}"
 
-            # Evitamos mensajes duplicados
-            if msg not in self.error_set:
-                self.errors.append(msg)
-                self.error_set.add(msg)
+        # Evitamos mensajes duplicados
+        if msg not in self.error_set:
+            self.errors.append(msg)
+            self.error_set.add(msg)

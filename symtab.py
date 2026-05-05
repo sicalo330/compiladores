@@ -66,8 +66,7 @@ class Symtab:
 		self.children: List["Symtab"] = []
 		
 		self._map: dict[str, Any] = {}
-		if parent is None:
-			self.cm: ChainMap = ChainMap(self._map)
+		if parent is None: self.cm: ChainMap = ChainMap(self._map)
 		else:
 			# encadena con el ChainMap del padre
 			self.cm: ChainMap = parent.cm.new_child(self._map)
@@ -82,10 +81,8 @@ class Symtab:
 		'''
 		Devuelve "tipo" compatible con tu chequeo previo.
 		'''
-		try:
-			return obj.type
-		except Exception:
-			return type(obj)
+		try: return obj.type
+		except Exception: return type(obj)
 			
 	# --- API pública compatible
 	
@@ -95,15 +92,13 @@ class Symtab:
 		- Si ya existe *en este mismo scope*:
 		* mismo tipo  -> SymbolDefinedError
 		* tipo distinto -> SymbolConflictError
-		- Si existe sólo en padres, se permite *sombrar* (shadowing).
+		- Si existe sólo en padres, se permite *sombrear* (shadowing).
 		'''
 		if name in self._map:
 			# chequeo de conflictos como el original
 			existing = self._map[name]
-			if self._type_of(existing) != self._type_of(value):
-				raise Symtab.SymbolConflictError(f"Conflicto: '{name}' ya definido con tipo distinto en scope '{self.name}'")
-			else:
-				raise Symtab.SymbolDefinedError(f"Redefinición: '{name}' ya definido en scope '{self.name}'")
+			if self._type_of(existing) != self._type_of(value): raise Symtab.SymbolConflictError(f"Conflicto: '{name}' ya definido con tipo distinto en scope '{self.name}'")
+			else: raise Symtab.SymbolDefinedError(f"Redefinición: '{name}' ya definido en scope '{self.name}'")
 		self._map[name] = value
 		return value
 		
@@ -113,8 +108,7 @@ class Symtab:
 		Devuelve None si no existe.
 		"""
 		# Usamos ChainMap para lookups; emula la recursión padre.get(...)
-		if name in self.cm:
-			return self.cm[name]
+		if name in self.cm: return self.cm[name]
 		return None
 		
 	# --- utilidades de depuración
@@ -129,15 +123,12 @@ class Symtab:
 		table.add_column('value', style='bright_green')
 		
 		for k, v in self._map.items():
-			if isinstance(v, Node):
-				value = f"{v.__class__.__name__}({getattr(v, 'name', '?')})"
-			else:
-				value = f"{v}"
+			if isinstance(v, Node): value = f"{v.__class__.__name__}({getattr(v, 'name', '?')})"
+			else: value = f"{v}"
 			table.add_row(k, value)
 		print(table, '\n')
 		
-		for child in self.children:
-			child.print()
+		for child in self.children: child.print()
 			
 	# --- extensiones opcionales
 
@@ -182,4 +173,3 @@ if __name__ == "__main__":
 	
 	# Vista unificada desde b
 	# print(b.merged_view())
- 

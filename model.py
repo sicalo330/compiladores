@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Any
 
-# TODO implementar modelos para las clases, el operador ternario, 
-
 class Node:
     def __init__(self):
         self.lineno: int = 0
@@ -25,6 +23,9 @@ class SimpleType(Type):
 class ArraySizedType(Type): 
     size: List[Expr]
     elem_type: Type
+
+    # def accept(this, Visitor visitor):
+    #     visitor.visitArraySizedType(this)
 
 @dataclass 
 class ArrayType(Type): 
