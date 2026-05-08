@@ -89,10 +89,6 @@ class IRInterpreter:
 		
 		if module_or_functions is not None:
 			self.load(module_or_functions)
-			
-	# -------------------------------------------------
-	# Public API
-	# -------------------------------------------------
 	
 	def load(self, module_or_functions: Any) -> None:
 		self.functions.clear()
@@ -132,10 +128,6 @@ class IRInterpreter:
 			
 		frame = self._make_frame(fn, args)
 		return self._execute_frame(frame)
-		
-	# -------------------------------------------------
-	# Frame and function helpers
-	# -------------------------------------------------
 	
 	def _register_function(self, fn: Any) -> None:
 		name = getattr(fn, "name", None)
@@ -183,10 +175,6 @@ class IRInterpreter:
 		if hasattr(fn, "args"):
 			return [str(x) for x in getattr(fn, "args")]
 		return []
-		
-	# -------------------------------------------------
-	# Global initialization
-	# -------------------------------------------------
 	
 	def _execute_global_inits(self, code: list[tuple]) -> None:
 		"""
@@ -197,10 +185,6 @@ class IRInterpreter:
 			return
 		frame = Frame(name="_globals", instructions=list(code))
 		self._execute_frame(frame)
-		
-	# -------------------------------------------------
-	# Core execution
-	# -------------------------------------------------
 	
 	def _execute_frame(self, frame: Frame):
 		self.call_depth += 1
@@ -220,24 +204,15 @@ class IRInterpreter:
 	def _dispatch(self, frame: Frame, inst: tuple) -> bool:
 		op = inst[0]
 		args = inst[1:]
-		
-		# -----------------------------------------------
-		# No-op structure / labels
-		# -----------------------------------------------
+
 		if op == "LABEL":
 			return False
-		
-		# -----------------------------------------------
-		# Variable allocation (ALLOC - for ircode_starter compatibility)
-		# -----------------------------------------------
+
 		if op == "ALLOC":
 			name = args[0]
 			frame.locals.setdefault(name, 0)
 			return False
-		
-		# -----------------------------------------------
-		# Temporal/Register operations (MOVI, MOVF, MOVB)
-		# -----------------------------------------------
+
 		if op == "MOVI":
 			value = int(args[0])
 			temp = args[1]
@@ -253,10 +228,12 @@ class IRInterpreter:
 			temp = args[1]
 			frame.temps[temp] = value
 			return False
-			
-		# -----------------------------------------------
-		# Arithmetic operations (direct form: ADD/SUB/MUL/DIV with temporals)
-		# -----------------------------------------------
+		if op == "MOVS":
+			value = args[0]
+			temp = args[1]
+			frame.temps[temp] = value
+			return False
+
 		if op == "ADD":
 			left = args[0]
 			right = args[1]
@@ -291,10 +268,17 @@ class IRInterpreter:
 				raise IRRuntimeError("División por cero")
 			frame.temps[out] = int(left_val / right_val)
 			return False
+		if op == "REM":
+			left = args[0]
+			right = args[1]
+			out = args[2]
+			left_val = self._get_operand(frame, left)
+			right_val = self._get_operand(frame, right)
+			if right_val == 0:
+				raise IRRuntimeError("División por cero")
+			frame.temps[out] = left_val % right_val
+			return False
 			
-		# -----------------------------------------------
-		# Unary operations (NEG, NOT)
-		# -----------------------------------------------
 		if op == "NEG":
 			operand = args[0]
 			out = args[1]
@@ -307,10 +291,7 @@ class IRInterpreter:
 			val = self._get_operand(frame, operand)
 			frame.temps[out] = 0 if val else 1
 			return False
-			
-		# -----------------------------------------------
-		# Comparison (CMP with symbol: CMP op left right out)
-		# -----------------------------------------------
+
 		if op == "CMP":
 			cmpop = args[0]
 			left = args[1]
@@ -321,10 +302,7 @@ class IRInterpreter:
 			result = self._compare_symbol(cmpop, left_val, right_val)
 			frame.temps[out] = 1 if result else 0
 			return False
-			
-		# -----------------------------------------------
-		# PRINT operations (PRINT, PRINTI, PRINTB, PRINTF)
-		# -----------------------------------------------
+
 		if op == "PRINT":
 			operand = args[0]
 			val = self._get_operand(frame, operand)
@@ -355,9 +333,6 @@ class IRInterpreter:
 			print(val)
 			return False
 			
-		# -----------------------------------------------
-		# Integer / float / byte constants
-		# -----------------------------------------------
 		if op == "CONSTI":
 			self._push(frame, int(args[0]))
 			return False
@@ -367,10 +342,7 @@ class IRInterpreter:
 		if op == "CONSTB":
 			self._push(frame, int(args[0]) & 0xFF)
 			return False
-			
-		# -----------------------------------------------
-		# Variable declarations
-		# -----------------------------------------------
+
 		if op in {"GLOBALI", "GLOBALF", "GLOBALB"}:
 			name = args[0]
 			self.globals.setdefault(name, 0)
@@ -380,31 +352,34 @@ class IRInterpreter:
 			name = args[0]
 			frame.locals.setdefault(name, 0)
 			return False
-			
-		# -----------------------------------------------
-		# Variable load / store
-		# -----------------------------------------------
+
 		if op == "LOAD":
 			name = args[0]
 			self._push(frame, self._load_var(frame, name))
 			return False
-		
-		# LOADI/LOADF/LOADB: load variable into temporary
-		# Usage: LOADI var temp  OR  LOADI var dest_stack (if 1 arg for stack-based)
+
 		if op in {"LOADI", "LOADF", "LOADB"}:
 			name = args[0]
 			if len(args) > 1:
-				# Two-operand form: LOADI var temp
 				temp = args[1]
 				frame.temps[temp] = self._load_var(frame, name)
 			else:
-				# One-operand form: push to stack
 				self._push(frame, self._load_var(frame, name))
+			return False
+
+		if op == "PUSH":
+			operand = args[0]
+			value = self._get_operand(frame, operand)
+			self._push(frame, value)
+			return False
+
+		if op == "POP":
+			temp = args[0]
+			value = self._pop(frame)
+			frame.temps[temp] = value
 			return False
 		
 		if op == "STORE":
-			# STORE val name: val can be temp like R1 or a variable name
-			# or STORE temp var
 			source = args[0]
 			name = args[1]
 			value = self._get_operand(frame, source)
@@ -418,10 +393,7 @@ class IRInterpreter:
 				value &= 0xFF
 			self._store_var(frame, name, value)
 			return False
-		
-		# -----------------------------------------------
-		# Arithmetic / logical
-		# -----------------------------------------------
+
 		if op in {"ADDI", "SUBI", "MULI", "DIVI", "ANDI", "ORI", "XORI"}:
 			b = int(self._pop(frame))
 			a = int(self._pop(frame))
@@ -457,10 +429,7 @@ class IRInterpreter:
 					raise IRRuntimeError("División por cero en DIVF")
 				self._push(frame, a / b)
 			return False
-			
-		# -----------------------------------------------
-		# Comparisons
-		# -----------------------------------------------
+
 		if op in {"LTI", "LEI", "GTI", "GEI", "EQI", "NEI"}:
 			b = int(self._pop(frame))
 			a = int(self._pop(frame))
@@ -494,9 +463,6 @@ class IRInterpreter:
 			self._push(frame, int(self._compare_symbol(cmpop, a, b)))
 			return False
 			
-		# -----------------------------------------------
-		# Printing / debugging
-		# -----------------------------------------------
 		if op == "PRINTI":
 			print(int(self._pop(frame)))
 			return False
@@ -507,9 +473,6 @@ class IRInterpreter:
 			print(chr(int(self._pop(frame)) & 0xFF), end="")
 			return False
 			
-		# -----------------------------------------------
-		# Type conversions
-		# -----------------------------------------------
 		if op == "ITOF":
 			self._push(frame, float(int(self._pop(frame))))
 			return False
@@ -522,10 +485,7 @@ class IRInterpreter:
 		if op == "BTOI":
 			self._push(frame, int(self._pop(frame)) & 0xFF)
 			return False
-			
-		# -----------------------------------------------
-		# Memory
-		# -----------------------------------------------
+
 		if op == "GROW":
 			nbytes = int(self._pop(frame))
 			if nbytes < 0:
@@ -573,9 +533,6 @@ class IRInterpreter:
 			self.memory[addr] = value
 			return False
 			
-		# -----------------------------------------------
-		# Structured IF / LOOP
-		# -----------------------------------------------
 		if op == "IF":
 			test = self._pop(frame)
 			if test:
@@ -607,36 +564,25 @@ class IRInterpreter:
 		if op == "ENDLOOP":
 			frame.pc = self._find_loop_start(frame.instructions, frame.pc)
 			return True
-			
-		# -----------------------------------------------
-		# Label-based control flow
-		# -----------------------------------------------
+		
 		if op == "BRANCH":
 			label = args[0]
 			frame.pc = self._jump_to_label(frame, label)
 			return True
 			
 		if op == "CBRANCH":
-			# CBRANCH can have two forms:
-			# 1. CBRANCH cond_operand label_true label_false (for ircode_starter)
-			# 2. CBRANCH label_true label_false (pops from stack for traditional IR)
 			if len(args) == 3:
-				# Form 1: operand-based CBRANCH
 				test_operand = args[0]
 				label_true = args[1]
 				label_false = args[2]
 				test = self._get_operand(frame, test_operand)
 			else:
-				# Form 2: stack-based CBRANCH
 				test = self._pop(frame)
 				label_true = args[0]
 				label_false = args[1]
 			frame.pc = self._jump_to_label(frame, label_true if test else label_false)
 			return True
-			
-		# -----------------------------------------------
-		# Calls / returns
-		# -----------------------------------------------
+		
 		if op == "CALL":
 			name = args[0]
 			argc = int(args[1]) if len(args) > 1 else 0
@@ -648,14 +594,13 @@ class IRInterpreter:
 			return False
 			
 		if op == "RET":
-			value = self._pop(frame) if frame.stack else None
+			if args:
+				value = self._get_operand(frame, args[0])
+			else:
+				value = None
 			raise IRReturn(value)
 			
 		raise IRRuntimeError(f"Opcode no soportado: {op}")
-		
-	# -------------------------------------------------
-	# Utility methods
-	# -------------------------------------------------
 	
 	def _trace(self, frame: Frame, inst: tuple) -> None:
 		if not self.trace:
@@ -689,17 +634,14 @@ class IRInterpreter:
 		if isinstance(operand, (int, float)):
 			return operand
 		operand_str = str(operand)
-		# Check if it's a temporary
 		if operand_str.startswith("R"):
 			if operand_str in frame.temps:
 				return frame.temps[operand_str]
 			raise IRRuntimeError(f"Temporal no inicializado: {operand_str}")
-		# Otherwise, treat as variable
 		if operand_str in frame.locals:
 			return frame.locals[operand_str]
 		if operand_str in self.globals:
 			return self.globals[operand_str]
-		# Try to parse as literal
 		try:
 			return int(operand_str)
 		except ValueError:
@@ -712,7 +654,6 @@ class IRInterpreter:
 		if name in self.globals:
 			self.globals[name] = value
 			return
-		# Si no existe, asumimos local implícita
 		frame.locals[name] = value
 		
 	def _jump_to_label(self, frame: Frame, label: str) -> int:
@@ -767,10 +708,6 @@ class IRInterpreter:
 		if op == "!=":
 			return a != b
 		raise IRRuntimeError(f"Operador de comparación desconocido: {op}")
-		
-	# -------------------------------------------------
-	# Structured control flow search helpers
-	# -------------------------------------------------
 	
 	@staticmethod
 	def _find_else_or_endif(code: list[tuple], start: int) -> int:
@@ -825,11 +762,6 @@ class IRInterpreter:
 					return i
 				depth -= 1
 		raise IRRuntimeError("No se encontró LOOP correspondiente")
-		
-		
-# ---------------------------------------------------
-# Small demo
-# ---------------------------------------------------
 
 def _demo_module() -> IRModule:
 	"""
@@ -855,7 +787,7 @@ def _demo_module() -> IRModule:
 				("CONSTI", 5),
 				("LEI",),
 				("CONSTI", 0),
-				("EQI",),       # test de break: !(x <= 5)
+				("EQI",),
 				("CBREAK",),
 			
 				("LOAD", "x"),

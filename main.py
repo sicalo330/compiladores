@@ -7,6 +7,7 @@ from visualizers import ASTVisualizer
 from visualizers import graphviz_ast
 from checker import Checker
 from errors import errors_detected
+# from ircode_starter import IRCodeGen
 
 if len(sys.argv) < 2:
     print("Uso: python parser.py archivo.bminor")
@@ -32,7 +33,7 @@ if ast is None: #Con lo que hay abajo, ¿Esto es necesario?
     print("No se generó AST debido a problemas de sintaxis")
     sys.exit(1)
 
-# print("\nAST generado:\n")
+print("\nAST generado:\n")
 
 # tree = ASTVisualizer.ast_to_tree(ast)
 # print(tree)
@@ -46,3 +47,6 @@ if not errors_detected():
     checker.check(ast)
 else:
     print("No se generó AST debido a problemas de sintaxis")
+
+# ir = IRCodeGen.generate(ast)
+# print(ir.format())

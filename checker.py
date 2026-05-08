@@ -24,9 +24,19 @@ class Checker(Visitor):
         self.visit(node)
         if self.errors:
             print("\n[red]Errores semánticos encontrados:[/red]")
-            for e in self.errors: print(f" - {e}")
-            print("\n[red]CHEQUEO SEMÁNTICO: ¡FALLIDO![/red]")
-        else: print("\n[green]CHEQUEO SEMÁNTICO: ¡EXITOSO![/green]")
+            for e in self.errors:
+                print(f" - {e}")
+            print("\n[red]Semantic check: FAILED[/red]")
+        else:
+            print("\n[green]Semantic check: SUCCESS[/green]")
+
+    def error(self, msg, node=None):
+        if node:
+            msg = f"Línea {node.lineno}: {msg}"
+        
+        if msg not in self.error_set:
+            self.errors.append(msg)
+            self.error_set.add(msg)
 
     # ==========================================
     # DISPATCH (USANDO MULTIMETHOD)
@@ -81,6 +91,7 @@ class Checker(Visitor):
         self.symtab.add(node.name, {"type": node.datatype, "category": "function"})
         
         ret_type = self.get_type(node.datatype.ret_type)
+        # print("self._func_stack: " + str(self._func_stack))
         self._func_stack.append(ret_type)
         
         old_tab = self.symtab
@@ -111,8 +122,8 @@ class Checker(Visitor):
     def _visit(self, node: IfStmt):
         cond_type = self.visit(node.cond)
 
-        # 🚨 PROTECCIÓN: evitar valores crudos
-        if not isinstance(cond_type, str): cond_type = "error"
+        if not isinstance(cond_type, str):
+            cond_type = "error"
 
         if cond_type != "boolean" and cond_type != "error": self.error(f"La condición del if debe ser boolean, se obtuvo {cond_type}",node)
         
@@ -171,7 +182,6 @@ class Checker(Visitor):
 
         if left_type == "error" or right_type == "error": return "error"
 
-        # 🚨 Validación clave
         if not isinstance(left_type, str) or not isinstance(right_type, str):
             self.error(f"Operación {node.op} inválida: no puede operar a {left_type} con {right_type}", node)
             return "error"
