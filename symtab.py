@@ -9,10 +9,9 @@ from rich.console import Console
 from rich         import print
 
 try:
-	# Mantengo compatibilidad con tu import original
 	from model import Node
 except Exception:
-	class Node:  # fallback mínimo para que no truene en entornos sin model.py
+	class Node:
 		def __init__(self, name): self.name = name
 		
 console = Console()
@@ -37,30 +36,12 @@ class Symtab:
 	- parent: referencia a la tabla padre
 	'''
 	class SymbolDefinedError(Exception):
-		'''
-		Se genera cuando se intenta agregar un símbolo al 
-		*mismo scope* donde ya existe una definición con 
-		el *mismo tipo*.
-		'''
 		pass
 		
 	class SymbolConflictError(Exception):
-		'''
-		Se genera cuando se intenta agregar un símbolo al 
-		*mismo scope* donde ya existe pero con *tipo 
-		diferente*.
-		'''
 		pass
-		
-	# --- implementación
 	
 	def __init__(self, name: str, parent: Optional["Symtab"] = None):
-		'''
-		Crea un scope con nombre y (opcional) padre.
-		- self._map: dict del scope actual (escrituras van aquí)
-		- self.cm: ChainMap que encadena (self._map, parent.cm, ...)
-		- self.entries: alias al dict del scope actual (compatibilidad)
-		'''
 		self.name: str = name
 		self.parent: Optional["Symtab"] = parent
 		self.children: List["Symtab"] = []
@@ -69,34 +50,21 @@ class Symtab:
 		if parent is None:
 			self.cm: ChainMap = ChainMap(self._map)
 		else:
-			# encadena con el ChainMap del padre
 			self.cm: ChainMap = parent.cm.new_child(self._map)
 			parent.children.append(self)
 			
-		# Compatibilidad con código existente
 		self.entries = self._map
 		
-	# --- helpers privados
+	#helpers privados
 	
 	def _type_of(self, obj: Any):
-		'''
-		Devuelve "tipo" compatible con tu chequeo previo.
-		'''
 		try:
 			return obj.type
 		except Exception:
 			return type(obj)
 			
-	# --- API pública compatible
 	
 	def add(self, name: str, value: Any):
-		'''
-		Define un símbolo en *este scope*.
-		- Si ya existe *en este mismo scope*:
-		* mismo tipo  -> SymbolDefinedError
-		* tipo distinto -> SymbolConflictError
-		- Si existe sólo en padres, se permite *sombrar* (shadowing).
-		'''
 		if name in self._map:
 			# chequeo de conflictos como el original
 			existing = self._map[name]
@@ -108,16 +76,10 @@ class Symtab:
 		return value
 		
 	def get(self, name: str):
-		"""
-		Recupera el símbolo buscando desde el scope actual hacia los padres.
-		Devuelve None si no existe.
-		"""
-		# Usamos ChainMap para lookups; emula la recursión padre.get(...)
 		if name in self.cm:
 			return self.cm[name]
 		return None
 		
-	# --- utilidades de depuración
 	
 	def print(self):
 		'''
@@ -139,7 +101,6 @@ class Symtab:
 		for child in self.children:
 			child.print()
 			
-	# --- extensiones opcionales
 
 	def merged_view(self) -> dict:
 		"""Vista efectiva (dict) del scope actual (interno > padres)."""
@@ -154,32 +115,25 @@ class Symtab:
 			node = node.parent
 		return list(reversed(out))
 		
-# --- Pequeña prueba manual (opcional)
 
 if __name__ == "__main__":
-	# Global
 	g = Symtab("global")
 	g.add("x", 1)
 	
-	# función f (hija de global)
 	f = Symtab("function f", parent=g)
-	f.add("x", 3)   # sombreo permitido
+	f.add("x", 3)
 	f.add("a", 10)
 	
-	# bloque dentro de f
 	b = Symtab("block", parent=f)
 	b.add("t", True)
 	
-	# Lookups
 	assert b.get("t") is True
 	assert b.get("a") == 10
 	assert b.get("x") == 3
 	assert g.get("x") == 1
 	assert g.get("a") is None
 	
-	# Print árbol
 	g.print()
 	
-	# Vista unificada desde b
-	# print(b.merged_view())
+	#print(b.merged_view())
  

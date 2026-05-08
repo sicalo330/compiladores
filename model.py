@@ -141,7 +141,7 @@ class UnaryOp(Expr):
     expr: Expr
 
 @dataclass 
-class AffixOp(Expr): # Ahora considera tanto notación prefijo como sufijo
+class AffixOp(Expr):
     op: str
     expr: Expr
 

@@ -9,7 +9,7 @@ class Lexer(sly.Lexer):
 		# keywords
 		ARRAY, BOOLEAN, BREAK, CHAR, CLASS, CONSTANT,
 		CONTINUE, ELSE, EXTENDS, FALSE, FLOAT, FOR, FUNCTION, IF,
-		INTEGER, NEW, PRINT, RETURN, STRING, TRUE, VOID, WHILE,
+		INTEGER, PRINT, RETURN, STRING, TRUE, VOID, WHILE,
 
 		# operators
 		LT, LE, GT, GE, EQ, NE, LAND, LOR, INC, DEC,
@@ -80,7 +80,6 @@ class Lexer(sly.Lexer):
 	ID['for']      = FOR
 	ID['function'] = FUNCTION	
 	ID['if']       = IF
-	ID['new']      = NEW
 	ID['integer']  = INTEGER
 	ID['print']    = PRINT
 	ID['return']   = RETURN
