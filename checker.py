@@ -5,38 +5,48 @@ from multimethod import multimethod
 from model import *
 from rich import print
 from visitor import Visitor
+import errors
 
 class Checker(Visitor):
     def __init__(self):
             self.symtab = Symtab("global")
             self._func_stack = []  #Es necesario poner una lista para simular una pila de funciones, creo que será util para bad1
             self.error_set = set()
-            self.errors = []
     
     @property
     def current_function(self):
         return self._func_stack[-1] if self._func_stack else None
+    
+    # ==========================================
+    # SISTEMA DE ERRORES UNIFICADO
+    # ==========================================
+    def error(self, msg, node=None):
+        # Evitamos reportar el mismo error varias veces si el nodo es el mismo
+        error_key = (msg, node.lineno if node else None)
+        if error_key not in self.error_set:
+            errors.error(msg, lineno=node.lineno if node else None, stage="CHECKER")
+            self.error_set.add(error_key)
 
     # ==========================================
     # ENTRY POINT
     # ==========================================
     def check(self, node):
         self.visit(node)
-        if self.errors:
-            print("\n[red]Errores semánticos encontrados:[/red]")
-            for e in self.errors:
-                print(f" - {e}")
-            print("\n[red]Semantic check: FAILED[/red]")
-        else:
-            print("\n[green]Semantic check: SUCCESS[/green]")
+        # if self.errors:
+        #     print("\n[red]Errores semánticos encontrados:[/red]")
+        #     for e in self.errors:
+        #         print(f" - {e}")
+        #     print("\n[red]Semantic check: FAILED[/red]")
+        # else:
+        #     print("\n[green]Semantic check: SUCCESS[/green]")
 
-    def error(self, msg, node=None):
-        if node:
-            msg = f"Línea {node.lineno}: {msg}"
+    # def error(self, msg, n    ode=None):
+    #     if node:
+    #         msg = f"Línea {node.lineno}: {msg}"
         
-        if msg not in self.error_set:
-            self.errors.append(msg)
-            self.error_set.add(msg)
+    #     if msg not in self.error_set:
+    #         self.errors.append(msg)
+    #         self.error_set.add(msg)
 
     # ==========================================
     # DISPATCH (USANDO MULTIMETHOD)
@@ -50,7 +60,7 @@ class Checker(Visitor):
     def _visit(self, node: Program):
         for decl in node.decls:
             if isinstance(decl, ExprStmt):
-                self.error(f"Línea {decl.lineno}: No se permiten expresiones en el nivel superior",node)
+                self.error("No se permiten expresiones en el nivel superior", decl)
             else:
                 self.visit(decl)
 
@@ -62,40 +72,45 @@ class Checker(Visitor):
         target_type = self.get_type(node.datatype) 
 
         if node.name in self.symtab._map: 
-            self.error(f"Variable '{node.name}' ya declarada en este ámbito",node)
-            return
+            self.error(f"Variable '{node.name}' ya declarada en este ámbito", node)
+            return "error"
 
         self.symtab.add(node.name, {"kind": "var", "type": target_type})
 
         if node.value:
             value_type = self.visit(node.value)
-            if target_type != value_type:
-                self.error(f"Asignación incompatible en '{node.name}': Se esperaba {self.type_to_string(target_type)} y se obtuvo {self.type_to_string(value_type)}",node)
+            if value_type != "error" and target_type != value_type:
+                #Esta linea de aquí está horriblemente larga
+                self.error(f"Asignación incompatible en '{node.name}':"
+                f"Se esperaba {self.type_to_string(target_type)} y se obtuvo {self.type_to_string(value_type)}", node)
         node.type = target_type
+        return target_type
 
     @multimethod
     def _visit(self, node: ArrayDecl):
         full_type = self.get_type(node.datatype)
+        # Extraer el tipo de los elementos para validar la lista de inicialización
         elem_type = self.get_type(node.datatype.elem_type)
         
         if node.name in self.symtab._map:
-            self.error(f"Arreglo '{node.name}' ya declarado en este ámbito",node)
-            return
+            self.error(f"Arreglo '{node.name}' ya declarado en este ámbito", node)
+            return "error"
 
         self.symtab.add(node.name, {"kind": "array", "type": full_type})
 
         if node.elements:
             for el in node.elements:
                 actual_type = self.visit(el)
-                if actual_type != elem_type:
-                    self.error(f"Elemento inválido en array '{node.name}': se esperaba {self.type_to_string(elem_type)}, se obtuvo {self.type_to_string(actual_type)}",node)
+                if actual_type != "error" and actual_type != elem_type:
+                    self.error(f"Elemento inválido en array '{node.name}': "
+                    f"se esperaba {self.type_to_string(elem_type)}, se obtuvo {self.type_to_string(actual_type)}", el)
+        return full_type
 
     @multimethod
     def _visit(self, node: FuncDecl):
         self.symtab.add(node.name, {"type": node.datatype, "category": "function"})
-        
+                
         ret_type = self.get_type(node.datatype.ret_type)
-        #print("self._func_stack: " + str(self._func_stack))
         self._func_stack.append(ret_type)
         
         old_tab = self.symtab
@@ -124,12 +139,8 @@ class Checker(Visitor):
     @multimethod
     def _visit(self, node: IfStmt):
         cond_type = self.visit(node.cond)
-
-        if not isinstance(cond_type, str):
-            cond_type = "error"
-
         if cond_type != "boolean" and cond_type != "error":
-            self.error(f"La condición del if debe ser boolean, se obtuvo {cond_type}",node)
+            self.error(f"La condición del if debe ser boolean, se obtuvo {self.type_to_string(cond_type)}", node.cond)
         
         self.visit(node.then_b)
         if node.else_b:
@@ -138,8 +149,8 @@ class Checker(Visitor):
     @multimethod
     def _visit(self, node: WhileStmt):
         cond_type = self.visit(node.cond)
-        if cond_type != "boolean":
-            self.error(f"La condición del while debe ser boolean, se obtuvo {cond_type}",node)
+        if cond_type != "boolean" and cond_type != "error":
+            self.error(f"La condición del while debe ser boolean, se obtuvo {self.type_to_string(cond_type)}", node.cond)
         self.visit(node.body)
 
     @multimethod
@@ -147,8 +158,8 @@ class Checker(Visitor):
         if node.init: self.visit(node.init)
         if node.cond:
             cond_type = self.visit(node.cond)
-            if cond_type != "boolean":
-                self.error("Condición de for debe ser boolean",node)
+            if cond_type != "boolean" and cond_type != "error":
+                self.error(f"Condición de for debe ser boolean, se obtuvo {self.type_to_string(cond_type)}", node.cond)
         if node.step: self.visit(node.step)
         self.visit(node.body)
 
@@ -158,7 +169,8 @@ class Checker(Visitor):
         expected_ret = self.current_function
         
         if actual_ret != "error" and actual_ret != expected_ret:
-            self.error(f"Tipo de retorno incorrecto en función: se esperaba {self.type_to_string(expected_ret)}, se obtuvo {self.type_to_string(actual_ret)}",node)
+            self.error(f"Tipo de retorno incorrecto: se esperaba {self.type_to_string(expected_ret)}, "
+                       f"se obtuvo {self.type_to_string(actual_ret)}", node)
 
     @multimethod
     def _visit(self, node: PrintStmt):
@@ -176,8 +188,9 @@ class Checker(Visitor):
     def _visit(self, node: AssignExpr):
         l_type = self.visit(node.lval)
         r_type = self.visit(node.expr)
-        if l_type and r_type and l_type != r_type:
-            self.error(f"Asignación incompatible: se esperaba {self.type_to_string(l_type)}, se obtuvo {self.type_to_string(r_type)}",node)
+        if l_type != "error" and r_type != "error" and l_type != r_type:
+            self.error(f"Asignación incompatible: se esperaba {self.type_to_string(l_type)}, "
+                       f"se obtuvo {self.type_to_string(r_type)}", node)
         node.type = l_type
         return l_type
 
@@ -189,15 +202,10 @@ class Checker(Visitor):
         if left_type == "error" or right_type == "error":
             return "error"
 
-        if not isinstance(left_type, str) or not isinstance(right_type, str):
-            self.error(f"Operación inválida: {self.type_to_string(left_type)} {node.op} {self.type_to_string(right_type)}",node)
-            return "error"
-
         res = check_binop(left_type, node.op, right_type)
         if res is None:
-            self.error(f"Operación inválida: {self.type_to_string(left_type)} {node.op} {self.type_to_string(right_type)}",node)
+            self.error(f"Operación inválida: {self.type_to_string(left_type)} {node.op} {self.type_to_string(right_type)}", node)
             return "error"
-
         return res
 
     @multimethod
