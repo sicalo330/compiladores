@@ -6,6 +6,8 @@ from rich.pretty import pprint
 from visualizers import ASTVisualizer
 from visualizers import graphviz_ast
 from checker import Checker
+from ircode_starter import IRCodeGen
+from irinterp import IRInterpreter
 from errors import errors_detected
 # from ircode_starter import IRCodeGen
 
@@ -51,14 +53,20 @@ ast = parser.parse(lexer.tokenize(text))
 #Este manejador de errores solo será temporal
 detectErrors()
 
+#-----------No borrar esto-------------
 # generateAST()
+#---------------------------------------
 
 checker = Checker()
 
-if not errors_detected():
-    checker.check(ast)
-else:
-    print("No se generó AST debido a problemas de sintaxis")
+checker.check(ast)
 
-# ir = IRCodeGen.generate(ast)
-# print(ir.format())
+if errors_detected():
+    print("\n[red]Semantic check: FAILED[/red]")
+    sys.exit(1)
+
+ir = IRCodeGen.generate(ast)
+print(ir.format())
+
+interp = IRInterpreter(ir, trace=True)
+interp.run("main")

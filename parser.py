@@ -376,7 +376,7 @@ class Parser(sly.Parser):
     @_('ID incdec_op',
        'incdec_op ID')
     def incdec_expr(self, p):
-        return _L(AffixOp(p.incdec_op, p.ID), p.lineno)
+        return _L(AffixOp(p.incdec_op, Location(p.ID)), p.lineno)
 
     @_('INC',
        'DEC')

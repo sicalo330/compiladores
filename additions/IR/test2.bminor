@@ -1,0 +1,11 @@
+square: function integer (x: integer) = {
+    return x * x;
+}
+
+main: function void () = {
+    result: integer;
+
+    result = square(5);
+
+    print result;
+}

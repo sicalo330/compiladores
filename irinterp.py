@@ -40,12 +40,17 @@ class Frame:
 	instructions: list[tuple]
 	params: list[str] = field(default_factory=list)
 	locals: dict[str, Any] = field(default_factory=dict)
+	scopes: list[dict[str, Any]] = field(default_factory=list)
 	pc: int = 0
 	stack: list[Any] = field(default_factory=list)
 	labels: dict[str, int] = field(default_factory=dict)
 	temps: dict[str, Any] = field(default_factory=dict)
 	
 	def __post_init__(self):
+		if not self.scopes:
+			self.scopes = [self.locals]
+		else:
+			self.locals = self.scopes[-1]
 		self.labels = self._index_labels(self.instructions)
 		
 	@staticmethod
@@ -153,6 +158,7 @@ class IRInterpreter:
 			instructions=instructions,
 			params=param_names,
 			locals=locals_,
+			scopes=[locals_],
 		)
 		
 	def _extract_code(self, fn: Any) -> list[tuple]:
@@ -208,9 +214,24 @@ class IRInterpreter:
 		if op == "LABEL":
 			return False
 
+		if op == "ENTER":
+			frame.scopes.append({})
+			frame.locals = frame.scopes[-1]
+			return False
+
+		if op == "EXIT":
+			if len(frame.scopes) <= 1:
+				raise IRRuntimeError("EXIT fuera de scope")
+			frame.scopes.pop()
+			frame.locals = frame.scopes[-1]
+			return False
+
 		if op == "ALLOC":
 			name = args[0]
-			frame.locals.setdefault(name, 0)
+			if frame.name == "_globals":
+				self.globals.setdefault(name, 0)
+			else:
+				frame.locals.setdefault(name, 0)
 			return False
 
 		if op == "MOVI":
@@ -306,7 +327,12 @@ class IRInterpreter:
 		if op == "PRINT":
 			operand = args[0]
 			val = self._get_operand(frame, operand)
-			# print(val, end="")
+			print(val, end="")
+			return False
+		if op == "PRINTS":
+			operand = args[0]
+			val = self._get_operand(frame, operand)
+			print(val, end="")
 			return False
 		if op == "PRINTI":
 			operand = args[0] if args else None
@@ -314,7 +340,7 @@ class IRInterpreter:
 				val = self._get_operand(frame, operand)
 			else:
 				val = int(self._pop(frame))
-			# print(val)
+			print(val)
 			return False
 		if op == "PRINTB":
 			operand = args[0] if args else None
@@ -322,7 +348,7 @@ class IRInterpreter:
 				val = self._get_operand(frame, operand)
 			else:
 				val = int(self._pop(frame))
-			# print(chr(int(val) & 0xFF), end="")
+			print(chr(int(val) & 0xFF), end="")
 			return False
 		if op == "PRINTF":
 			operand = args[0] if args else None
@@ -330,7 +356,7 @@ class IRInterpreter:
 				val = self._get_operand(frame, operand)
 			else:
 				val = float(self._pop(frame))
-			# print(val)
+			print(val)
 			return False
 			
 		if op == "CONSTI":
@@ -358,7 +384,7 @@ class IRInterpreter:
 			self._push(frame, self._load_var(frame, name))
 			return False
 
-		if op in {"LOADI", "LOADF", "LOADB"}:
+		if op in {"LOADI", "LOADF", "LOADB", "LOADS"}:
 			name = args[0]
 			if len(args) > 1:
 				temp = args[1]
@@ -385,10 +411,32 @@ class IRInterpreter:
 			value = self._get_operand(frame, source)
 			self._store_var(frame, name, value)
 			return False
+		
+		if op == "STOREA":
+			# STOREA value array_name index
+			source = args[0]
+			name = args[1]
+			index = int(args[2])
+			value = self._get_operand(frame, source)
+			# Get or create array
+			arr = self._load_var(frame, name)
+			if not isinstance(arr, list):
+				arr = []
+				self._store_var(frame, name, arr)
+			# Extend array if necessary
+			while len(arr) <= index:
+				arr.append(0)
+			arr[index] = value
+			return False
 			
-		if op in {"STOREI", "STOREF", "STOREB"}:
-			name = args[0]
-			value = self._pop(frame)
+		if op in {"STOREI", "STOREF", "STOREB", "STORES"}:
+			if len(args) == 2:
+				source = args[0]
+				name = args[1]
+				value = self._get_operand(frame, source)
+			else:
+				name = args[0]
+				value = self._pop(frame)
 			if op == "STOREB":
 				value &= 0xFF
 			self._store_var(frame, name, value)
@@ -606,7 +654,7 @@ class IRInterpreter:
 		if not self.trace:
 			return
 		indent = "  " * max(0, self.call_depth - 1)
-		# print(f"{indent}[{frame.name} pc={frame.pc}] {inst} stack={frame.stack} locals={frame.locals}")
+		print(f"{indent}[{frame.name} pc={frame.pc}] {inst} stack={frame.stack} locals={frame.locals}")
 		
 	def _push(self, frame: Frame, value: Any) -> None:
 		frame.stack.append(value)
@@ -617,10 +665,15 @@ class IRInterpreter:
 		return frame.stack.pop()
 		
 	def _load_var(self, frame: Frame, name: str) -> Any:
-		if name in frame.locals:
-			return frame.locals[name]
+		# Buscar desde el scope más interno al más externo
+		for scope in reversed(frame.scopes):
+			if name in scope:
+				return scope[name]
+
+		# Si no está en scopes locales, buscar en globals
 		if name in self.globals:
 			return self.globals[name]
+
 		raise IRRuntimeError(f"Variable no definida: {name}")
 	
 	def _get_operand(self, frame: Frame, operand: str | int) -> Any:
@@ -638,8 +691,9 @@ class IRInterpreter:
 			if operand_str in frame.temps:
 				return frame.temps[operand_str]
 			raise IRRuntimeError(f"Temporal no inicializado: {operand_str}")
-		if operand_str in frame.locals:
-			return frame.locals[operand_str]
+		for scope in reversed(frame.scopes):
+			if operand_str in scope:
+				return scope[operand_str]
 		if operand_str in self.globals:
 			return self.globals[operand_str]
 		try:
