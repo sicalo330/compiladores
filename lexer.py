@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sly
-from errors import error, errors_detected
+from errors import error, has_errors
 
 class Lexer(sly.Lexer):
 	tokens: set = {
@@ -126,29 +126,40 @@ class Lexer(sly.Lexer):
 		return t
 
 	def error(self, t):
-		error(f"Carcater Ilegal '{t.value[0]}'", t.lineno)
+		from errors import error
+		error(f"Carácter ilegal '{t.value[0]}'", t.lineno, stage="LEXER")
 		self.index += 1
 
 def tokenize(filename: str) -> None:
-	from rich.table   import Table
-	from rich.console import Console
+    from rich.table import Table
+    from rich.console import Console
 
-	txt: str = open(filename, encoding='utf-8').read()
-	lex: Lexer = Lexer()
+    console = Console()
+    txt = open(filename, encoding='utf-8').read()
+    lex = Lexer()
 
-	table: Table = Table(title='Análisis Léxico')
-	table.add_column('type')
-	table.add_column('value')
-	table.add_column('lineno', justify='right')
+    tokens_accumulated = []
+    
+    # Intentamos tokenizar todo
+    for tok in lex.tokenize(txt):
+        tokens_accumulated.append(tok)
 
-	for tok in lex.tokenize(txt):
-		value: str = tok.value if isinstance(tok.value, str) else str(tok.value)
-		table.add_row(tok.type, value, str(tok.lineno))
-		# print(tok)
+    # Si hubo errores durante el loop de tokenize, el lexer ya los imprimió
+    if has_errors():
+		#El color amarillo no se muestra, no sé por qué
+        print(f"\n[bold yellow]Se encontraron errores léxicos. La tabla no se mostrará.[/bold yellow]")
+    else:
+        # Solo armamos y mostramos la tabla si el análisis fue limpio
+        table = Table(title='Análisis Léxico Exitoso')
+        table.add_column('type', style="cyan")
+        table.add_column('value', style="green")
+        table.add_column('lineno', justify='right')
 
-	if not errors_detected():
-		console: Console = Console()
-		console.print(table)
+        for tok in tokens_accumulated:
+            value = tok.value if isinstance(tok.value, str) else str(tok.value)
+            table.add_row(tok.type, value, str(tok.lineno))
+        
+        console.print(table)
 
 if __name__ == '__main__':
 	import sys

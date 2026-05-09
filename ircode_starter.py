@@ -48,6 +48,9 @@ class IRProgram:
 
         return "\n".join(out)
 
+    def has_function(self, name: str) -> bool:
+        return any(fn.name == name for fn in self.functions)
+
 
 class IRCodeGen(Visitor):
 
@@ -68,6 +71,8 @@ class IRCodeGen(Visitor):
             return self.visit_program(node)
         elif isinstance(node, VarDecl):
             return self.visit_vardecl(node)
+        elif isinstance(node, ArrayDecl):
+            return self.visit_arraydecl(node)
         elif isinstance(node, FuncDecl):
             return self.visit_funcdecl(node)
         elif isinstance(node, BlockStmt):
@@ -90,10 +95,14 @@ class IRCodeGen(Visitor):
             return self.visit_binop(node)
         elif isinstance(node, UnaryOp):
             return self.visit_unary(node)
+        elif isinstance(node, AffixOp):
+            return self.visit_affix(node)
         elif isinstance(node, Literal):
             return self.visit_literal(node)
         elif isinstance(node, Location):
             return self.visit_location(node)
+        elif isinstance(node, ArrayAccess):
+            return self.visit_arrayaccess(node)
         elif isinstance(node, FuncCall):
             return self.visit_funccall(node)
         else:
@@ -146,8 +155,12 @@ class IRCodeGen(Visitor):
         if isinstance(ty, SimpleType):
             if ty.name in ("integer", "boolean"):
                 return "I"
+            elif ty.name == "float":
+                return "F"
             elif ty.name == "char":
                 return "B"
+            elif ty.name == "string":
+                return "S"
             elif ty.name == "void":
                 return "V"
         raise NotImplementedError(f"Tipo no soportado: {ty}")
@@ -178,6 +191,8 @@ class IRCodeGen(Visitor):
         for decl in node.decls:
             if isinstance(decl, VarDecl):
                 self.bind(Storage(decl.name, decl.datatype, is_global=True))
+            elif isinstance(decl, ArrayDecl):
+                self.bind(Storage(decl.name, decl.datatype, is_global=True))
             elif isinstance(decl, FuncDecl):
                 self.bind(Storage(decl.name, decl.datatype, is_global=True))
 
@@ -190,6 +205,10 @@ class IRCodeGen(Visitor):
     def visit_funcdecl(self, node: FuncDecl):
         fn = IRFunction(node.name, [(p.name, p.datatype) for p in node.datatype.params], node.datatype)
         self.program.functions.append(fn)
+
+        # Si es un prototipo de función (sin cuerpo), no generar instrucciones
+        if node.body is None:
+            return
 
         prev = self.current_function
         self.current_function = fn
@@ -208,10 +227,12 @@ class IRCodeGen(Visitor):
         self.current_function = prev
 
     def visit_block(self, node: BlockStmt):
+        self.emit("ENTER")
         self.push_scope()
         for stmt in node.stmts:
             self.visit(stmt)
         self.pop_scope()
+        self.emit("EXIT")
 
     # =================================================
     # DECLARATIONS
@@ -225,6 +246,21 @@ class IRCodeGen(Visitor):
             val = self.visit(node.value)
             self.emit("STORE", val, node.name)
 
+    def visit_arraydecl(self, node: ArrayDecl):
+        # Bind the array storage
+        self.bind(Storage(node.name, node.datatype))
+        
+        # For arrays, we allocate once per declaration
+        self.emit("ALLOC", node.name)
+        
+        # If there are initial values, store them
+        if node.elements:
+            for i, elem in enumerate(node.elements):
+                val = self.visit(elem)
+                # For simplicity, we emit a STORE with index
+                # The interpreter will handle array indexing
+                self.emit("STOREA", val, node.name, i)
+
     # =================================================
     # STATEMENTS
     # =================================================
@@ -235,19 +271,38 @@ class IRCodeGen(Visitor):
 
     def visit_print(self, node: PrintStmt):
         for expr in node.exprs:
-            val = self.visit(expr)
-            self.emit("PRINT", val)
+            if isinstance(expr, Literal):
+                val = self.visit(expr)
+                if isinstance(expr.value, str) and len(expr.value) == 1:
+                    self.emit("PRINTB", val)
+                else:
+                    self.emit("PRINT", val)
+            elif isinstance(expr, Location):
+                storage = self.lookup(expr.name)
+                val = self.visit(expr)
+                if isinstance(storage.ty, SimpleType) and storage.ty.name == "char":
+                    self.emit("PRINTB", val)
+                else:
+                    self.emit("PRINT", val)
+            else:
+                val = self.visit(expr)
+                self.emit("PRINT", val)
 
     def visit_exprstmt(self, node: ExprStmt):
         self.visit(node.expr)
 
     def visit_assign(self, node: AssignExpr):
         val = self.visit(node.expr)
-        # lval debe ser una Location
+        # lval puede ser Location o ArrayAccess
         if isinstance(node.lval, Location):
             self.emit("STORE", val, node.lval.name)
+        elif isinstance(node.lval, ArrayAccess):
+            if len(node.lval.index_list) != 1:
+                raise Exception("Multi-dimensional arrays not supported yet")
+            index = self.visit(node.lval.index_list[0])
+            self.emit("STOREA", val, node.lval.name, index)
         else:
-            raise Exception(f"Asignación a non-location no soportada: {type(node.lval)}")
+            raise Exception(f"Asignación a {type(node.lval)} no soportada")
         return val
 
     def visit_return(self, node: ReturnStmt):
@@ -261,12 +316,19 @@ class IRCodeGen(Visitor):
         cond = self.visit(node.cond)
 
         L_then = self.new_label()
+        L_else = self.new_label()
         L_end = self.new_label()
 
-        self.emit("CBRANCH", cond, L_then, L_end)
+        self.emit("CBRANCH", cond, L_then, L_else)
 
         self.emit("LABEL", L_then)
         self.visit(node.then_b)
+        self.emit("BRANCH", L_end)
+
+        self.emit("LABEL", L_else)
+        if node.else_b:
+            self.visit(node.else_b)
+
         self.emit("LABEL", L_end)
 
     def visit_while(self, node: WhileStmt):
@@ -316,6 +378,16 @@ class IRCodeGen(Visitor):
             self.emit("PUSH", val)
 
         self.emit("CALL", node.name, len(node.args))
+
+        func_storage = None
+        try:
+            func_storage = self.lookup(node.name)
+        except Exception:
+            pass
+
+        if func_storage is not None and isinstance(func_storage.ty, FuncType) and func_storage.ty.ret_type == SimpleType("void"):
+            return None
+
         result = self.new_temp()
         self.emit("POP", result)
         return result
@@ -342,6 +414,10 @@ class IRCodeGen(Visitor):
             self.emit("REM", left, right, out)
         elif node.op in {"<", "<=", ">", ">=", "==", "!="}:
             self.emit("CMP", node.op, left, right, out)
+        elif node.op == "&&":
+            self.emit("AND", left, right, out)
+        elif node.op == "||":
+            self.emit("OR", left, right, out)
         else:
             raise Exception(f"Operador no soportado: {node.op}")
 
@@ -359,7 +435,39 @@ class IRCodeGen(Visitor):
 
         return out
 
-    #Aquí hay booleanos, enteros y strings
+    def visit_affix(self, node: AffixOp):
+        if not isinstance(node.expr, Location):
+            raise Exception(f"AffixOp solo soportado sobre Location, no {type(node.expr)}")
+
+        storage = self.lookup(node.expr.name)
+        if not isinstance(storage.ty, SimpleType):
+            raise Exception(f"AffixOp no soportado para tipo: {storage.ty}")
+
+        if storage.ty.name == "void" or storage.ty.name == "string":
+            raise Exception(f"AffixOp no soportado para tipo: {storage.ty}")
+
+        load = self.load_opcode(storage.ty)
+        store = self.store_opcode(storage.ty)
+
+        old_temp = self.new_temp()
+        self.emit(load, node.expr.name, old_temp)
+
+        increment = self.new_temp()
+        if storage.ty.name == "float":
+            self.emit("MOVF", 1.0, increment)
+        else:
+            self.emit("MOVI", 1, increment)
+
+        result = self.new_temp()
+        if node.op == "++":
+            self.emit("ADD", old_temp, increment, result)
+        else:
+            self.emit("SUB", old_temp, increment, result)
+
+        self.emit(store, result, node.expr.name)
+        return result
+
+    #Aquí hay booleanos, enteros, flotantes y strings
     # #En este caso los booleanos se representacn con 1 = true y 0 = false    
     def visit_literal(self, node):
         tmp = self.new_temp()
@@ -368,6 +476,8 @@ class IRCodeGen(Visitor):
             self.emit("MOVI", 1 if node.value else 0, tmp)
         elif isinstance(node.value, int):
             self.emit("MOVI", node.value, tmp)
+        elif isinstance(node.value, float):
+            self.emit("MOVF", node.value, tmp)
         elif isinstance(node.value, str):
             if len(node.value) == 1:
                 self.emit("MOVB", ord(node.value), tmp)
@@ -380,8 +490,20 @@ class IRCodeGen(Visitor):
     
     def visit_location(self, node):
         storage = self.lookup(node.name)
+        if isinstance(storage.ty, (ArrayType, ArraySizedType)):
+            # Pasar arreglos por referencia como nombre de variable
+            return node.name
         tmp = self.new_temp()
         self.emit(self.load_opcode(storage.ty), node.name, tmp)
+        return tmp
+
+    def visit_arrayaccess(self, node):
+        # Assume 1D array for now
+        if len(node.index_list) != 1:
+            raise Exception("Multi-dimensional arrays not supported yet")
+        index = self.visit(node.index_list[0])
+        tmp = self.new_temp()
+        self.emit("LOADA", tmp, node.name, index)
         return tmp
 
     @classmethod

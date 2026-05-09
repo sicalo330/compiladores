@@ -1,0 +1,7 @@
+main: function void () = {
+    c: char = 'A';
+    s: string = "Hola mundo";
+
+    print c;
+    print s;
+}
