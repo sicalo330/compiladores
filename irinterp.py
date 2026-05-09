@@ -306,7 +306,7 @@ class IRInterpreter:
 		if op == "PRINT":
 			operand = args[0]
 			val = self._get_operand(frame, operand)
-			print(val, end="")
+			# print(val, end="")
 			return False
 		if op == "PRINTI":
 			operand = args[0] if args else None
@@ -314,7 +314,7 @@ class IRInterpreter:
 				val = self._get_operand(frame, operand)
 			else:
 				val = int(self._pop(frame))
-			print(val)
+			# print(val)
 			return False
 		if op == "PRINTB":
 			operand = args[0] if args else None
@@ -322,7 +322,7 @@ class IRInterpreter:
 				val = self._get_operand(frame, operand)
 			else:
 				val = int(self._pop(frame))
-			print(chr(int(val) & 0xFF), end="")
+			# print(chr(int(val) & 0xFF), end="")
 			return False
 		if op == "PRINTF":
 			operand = args[0] if args else None
@@ -330,7 +330,7 @@ class IRInterpreter:
 				val = self._get_operand(frame, operand)
 			else:
 				val = float(self._pop(frame))
-			print(val)
+			# print(val)
 			return False
 			
 		if op == "CONSTI":
@@ -464,13 +464,13 @@ class IRInterpreter:
 			return False
 			
 		if op == "PRINTI":
-			print(int(self._pop(frame)))
+			# print(int(self._pop(frame)))
 			return False
 		if op == "PRINTF":
-			print(float(self._pop(frame)))
+			# print(float(self._pop(frame)))
 			return False
 		if op == "PRINTB":
-			print(chr(int(self._pop(frame)) & 0xFF), end="")
+			# print(chr(int(self._pop(frame)) & 0xFF), end="")
 			return False
 			
 		if op == "ITOF":
@@ -606,7 +606,7 @@ class IRInterpreter:
 		if not self.trace:
 			return
 		indent = "  " * max(0, self.call_depth - 1)
-		print(f"{indent}[{frame.name} pc={frame.pc}] {inst} stack={frame.stack} locals={frame.locals}")
+		# print(f"{indent}[{frame.name} pc={frame.pc}] {inst} stack={frame.stack} locals={frame.locals}")
 		
 	def _push(self, frame: Frame, value: Any) -> None:
 		frame.stack.append(value)
@@ -809,4 +809,4 @@ def _demo_module() -> IRModule:
 if __name__ == "__main__":
 	interp = IRInterpreter(_demo_module(), trace=False)
 	result = interp.run("main")
-	print("\nreturn =", result)
+	# print("\nreturn =", result)

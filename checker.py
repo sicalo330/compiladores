@@ -70,7 +70,7 @@ class Checker(Visitor):
         if node.value:
             value_type = self.visit(node.value)
             if target_type != value_type:
-                self.error(f"Asignación incompatible en '{node.name}': Se esperaba un {target_type} y se obtuvo un {value_type}",node)
+                self.error(f"Asignación incompatible en '{node.name}': Se esperaba {self.type_to_string(target_type)} y se obtuvo {self.type_to_string(value_type)}",node)
         node.type = target_type
 
     @multimethod
@@ -92,21 +92,20 @@ class Checker(Visitor):
             for el in node.elements:
                 actual_type = self.visit(el)
                 if actual_type != elem_type:
-                    self.error(f"Elemento inválido en array '{node.name}': se esperaba {elem_type}, se obtuvo {actual_type}",node)
+                    self.error(f"Elemento inválido en array '{node.name}': se esperaba {self.type_to_string(elem_type)}, se obtuvo {self.type_to_string(actual_type)}",node)
 
     @multimethod
     def _visit(self, node: FuncDecl):
         self.symtab.add(node.name, {"type": node.datatype, "category": "function"})
         
         ret_type = self.get_type(node.datatype.ret_type)
-        # print("self._func_stack: " + str(self._func_stack))
+        #print("self._func_stack: " + str(self._func_stack))
         self._func_stack.append(ret_type)
         
         old_tab = self.symtab
         self.symtab = Symtab(node.name, parent=old_tab)
         
         for p in node.datatype.params:
-            # Esto llamará a _visit(self, node: Param)
             self.visit(p) 
         
         if node.body:
@@ -163,7 +162,7 @@ class Checker(Visitor):
         expected_ret = self.current_function
         
         if actual_ret != "error" and actual_ret != expected_ret:
-            self.error(f"Tipo de retorno incorrecto en función: se esperaba {expected_ret}, se obtuvo {actual_ret}",node)
+            self.error(f"Tipo de retorno incorrecto en función: se esperaba {self.type_to_string(expected_ret)}, se obtuvo {self.type_to_string(actual_ret)}",node)
 
     @multimethod
     def _visit(self, node: PrintStmt):
@@ -182,7 +181,7 @@ class Checker(Visitor):
         l_type = self.visit(node.lval)
         r_type = self.visit(node.expr)
         if l_type and r_type and l_type != r_type:
-            self.error(f"Asignación incompatible: se esperaba {l_type}, se obtuvo {r_type}",node)
+            self.error(f"Asignación incompatible: se esperaba {self.type_to_string(l_type)}, se obtuvo {self.type_to_string(r_type)}",node)
         node.type = l_type
         return l_type
 
@@ -195,12 +194,12 @@ class Checker(Visitor):
             return "error"
 
         if not isinstance(left_type, str) or not isinstance(right_type, str):
-            self.error(f"Operación inválida: {left_type} {node.op} {right_type}",node)
+            self.error(f"Operación inválida: {self.type_to_string(left_type)} {node.op} {self.type_to_string(right_type)}",node)
             return "error"
 
         res = check_binop(left_type, node.op, right_type)
         if res is None:
-            self.error(f"Operación inválida: {left_type} {node.op} {right_type}",node)
+            self.error(f"Operación inválida: {self.type_to_string(left_type)} {node.op} {self.type_to_string(right_type)}",node)
             return "error"
 
         return res
@@ -210,7 +209,7 @@ class Checker(Visitor):
         operand = self.visit(node.expr)
         result = check_unaryop(node.op, operand)
         if result is None:
-            self.error(f"Operador '{node.op}' no aplicable al tipo {operand}",node)
+            self.error(f"Operador '{node.op}' no aplicable al tipo {self.type_to_string(operand)}",node)
             result = "error"
         node.type = result
         return result
@@ -226,8 +225,6 @@ class Checker(Visitor):
     #Cambios aquí
     @multimethod
     def _visit(self, node: ArrayAccess):
-        # 1. Buscamos el nombre del arreglo directamente en la symtab
-        # ya que en tu model.py 'name' es un string, no un nodo Location
         symbol = self.symtab.get(node.name)
         if symbol is None:
             self.error(f"Arreglo '{node.name}' no declarado", node)
@@ -235,13 +232,13 @@ class Checker(Visitor):
         
         base_type = symbol.get("type", "error")
         
-        # 2. Validamos el índice (el índice sí es un nodo Expr, así que lo visitamos)
-        idx_type = self.visit(node.index)
-        if idx_type != "error" and idx_type != "integer":
-            self.error(f"El índice del arreglo debe ser integer, se obtuvo {idx_type}", node)
+        indices = node.index_list if isinstance(node.index_list, list) else [node.index_list]
+        for index in indices:
+            idx_type = self.visit(index)
+            if idx_type != "error" and idx_type != "integer":
+                self.error(f"El índice del arreglo debe ser integer, se obtuvo {idx_type}", node)
 
-        # 3. Devolvemos el tipo de los ELEMENTOS
-        # Si es un ArraySizedType o ArrayType, extraemos el elem_type
+        #Si es un ArraySizedType o ArrayType, extraemos el elem_type
         if isinstance(base_type, (ArrayType, ArraySizedType)):
             return self.get_type(base_type.elem_type)
         
@@ -301,7 +298,7 @@ class Checker(Visitor):
                     compatible = True
 
             if not compatible:
-                self.error(f"Argumento {i+1} de '{node.name}' incorrecto: se esperaba {param_type}, se obtuvo {arg_type}", arg_expr)
+                self.error(f"Argumento {i+1} de '{node.name}' incorrecto: se esperaba {self.type_to_string(param_type)}, se obtuvo {self.type_to_string(arg_type)}", arg_expr)
 
         # 4. Visitar argumentos extra si los hay (para detectar errores internos en ellos)
         if len(args) > len(params):
@@ -337,27 +334,55 @@ class Checker(Visitor):
         }
         return mapping.get(t, t)
 
-    def get_type(self, datatype):
-        if isinstance(datatype, SimpleType):
-            return self.normalize_type(datatype.name)
-
-        if isinstance(datatype, (ArrayType, ArraySizedType)):
-                    # Esto es clave: para comparaciones de tipos básicos, 
-                    # a veces queremos saber el tipo base, pero para la 
-                    # estructura de datos, queremos el objeto completo.
-                    return datatype
-        if isinstance(datatype, FuncType):
-            return self.get_type(datatype.ret_type)
+    def type_to_string(self, t):
+        if isinstance(t, str):
+            return t
+        if isinstance(t, SimpleType):
+            return self.normalize_type(t.name)
+        if isinstance(t, ArrayType):
+            return f"array<{self.type_to_string(t.elem_type)}>"
+        if isinstance(t, ArraySizedType):
+            return f"array<{self.type_to_string(t.elem_type)}>"
+        if isinstance(t, FuncType):
+            params_str = ", ".join(self.type_to_string(p.datatype) for p in t.params)
+            return f"function {self.type_to_string(t.ret_type)} ({params_str})"
+        return str(t)
 
         return "void"
 
 
-    def error(self, msg, node=None):
-            # Si nos pasan un nodo, extraemos su línea para el mensaje
-            if node and hasattr(node, 'lineno') and node.lineno > 0:
-                msg = f"Línea {node.lineno}: {msg}"
+    # def error(self, msg, node=None):
+    #         # Si nos pasan un nodo, extraemos su línea para el mensaje
+    #         if node and hasattr(node, 'lineno') and node.lineno > 0:
+    #             msg = f"Línea {node.lineno}: {msg}"
+            
+    #         if node:
+    #             msg = f"Línea {node.lineno}: {msg}"
 
-            # Evitamos mensajes duplicados
-            if msg not in self.error_set:
-                self.errors.append(msg)
-                self.error_set.add(msg)
+    #         # Evitamos mensajes duplicados
+    #         if msg not in self.error_set:
+    #             self.errors.append(msg)
+    #             self.error_set.add(msg)
+
+    def get_type(self, datatype):
+        if isinstance(datatype, SimpleType):
+            return self.normalize_type(datatype.name)
+
+        if isinstance(datatype, ArrayType):
+            return ArrayType(
+                self.get_type(datatype.elem_type)
+            )
+
+        if isinstance(datatype, ArraySizedType):
+            return ArraySizedType(
+                datatype.size,
+                self.get_type(datatype.elem_type)
+            )
+
+        if isinstance(datatype, FuncType):
+            return FuncType(
+                datatype.params,
+                self.get_type(datatype.ret_type)
+            )
+
+        return datatype

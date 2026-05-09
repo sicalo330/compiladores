@@ -279,16 +279,16 @@ class Parser(sly.Parser):
     def lval(self, p):
         return _L(ArrayAccess(p.ID, p.index_list), p.lineno)
     
-    @_('index index_list')
+    @_('array_index')
     def index_list(self, p):
-        return p.index_list + [p.index]
-    
-    @_('index')
+        return [p.array_index]
+
+    @_('index_list array_index')
     def index_list(self, p):
-        return p.index
+        return p.index_list + [p.array_index]
 
     @_('"[" expr "]"')
-    def index(self, p):
+    def array_index(self, p):
         return p.expr
 
 # PRECEDENCIA OPERADORES
@@ -365,9 +365,9 @@ class Parser(sly.Parser):
     def expr9(self, p):
         return _L(TernOp(p.expr0, p.expr1, p.expr2))
     
-    @_('ID index')
+    @_('ID index_list')
     def expr9(self, p):
-        return _L(ArrayAccess(p.ID, p.index), p.lineno)
+        return _L(ArrayAccess(p.ID, p.index_list), p.lineno)
     
     @_('incdec_expr')
     def expr9(self, p):
@@ -487,7 +487,7 @@ class Parser(sly.Parser):
 
     @_('param "," param_list')
     def param_list(self, p):
-        return p.param_list + [p.param]
+        return [p.param] + p.param_list
 
     @_('ID ":" type_simple',
         'ID ":" type_array_sized',
