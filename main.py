@@ -8,18 +8,21 @@ from visualizers import graphviz_ast
 from checker import Checker
 from ircode_starter import IRCodeGen
 from irinterp import IRInterpreter
-from errors import errors_detected
+from errors import *
 # from ircode_starter import IRCodeGen
 
-def verifyLenghtFiles() -> str:
+def load_file():
     if len(sys.argv) < 2:
-        print("Uso: python parser.py archivo.bminor")
+        print("[bold red]Uso:[/bold red] python main.py <archivo.bminor>")
         sys.exit(1)
-    #Filename es el directorio que busca del testeo, test/good0.bminor por ejemplo
+    
     filename = sys.argv[1]
-    with open(filename, "r", encoding="utf-8") as f:
-        text = f.read()
-    return text
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"[bold red]Error:[/bold red] El archivo '{filename}' no existe.")
+        sys.exit(1)
 
 def detectErrors():
     if not errors_detected():
@@ -42,31 +45,72 @@ def generateAST():
 #----------------------------------
 # Ejecutar main.py
 #----------------------------------
+#Al parecer esto es bueno porque a la larga se genera mucha basura
+# clearErrors()
 
-text = verifyLenghtFiles()
+# text = verifyLenghtFiles()
 
-lexer = Lexer()
-parser = Parser()
+# lexer = Lexer()
+# parser = Parser()
 
-ast = parser.parse(lexer.tokenize(text))
+# ast = parser.parse(lexer.tokenize(text))
 
 #Este manejador de errores solo será temporal
-detectErrors()
+# detectErrors()
 
 #-----------No borrar esto-------------
 # generateAST()
 #---------------------------------------
 
-checker = Checker()
+# checker = Checker()
 
-checker.check(ast)
+# checker.check(ast)
 
-if errors_detected():
-    print("\n[red]Semantic check: FAILED[/red]")
-    sys.exit(1)
+# if errors_detected():
+#     print("\n[red]Semantic check: FAILED[/red]")
+#     sys.exit(1)
 
-ir = IRCodeGen.generate(ast)
-print(ir.format())
+# ir = IRCodeGen.generate(ast)
+# print(ir.format())
 
-interp = IRInterpreter(ir, trace=True)
-interp.run("main")
+# interp = IRInterpreter(ir, trace=True)
+# interp.run("main")
+
+def main():
+    clearErrors() # Asegúrate que esta función limpie _errors_detected y la lista
+    text = load_file()
+    
+    lexer = Lexer()
+    parser = Parser()
+
+    tokens = list(lexer.tokenize(text))
+    if has_errors(stage="LEXER"):
+        print("\n[red]Lexical check: FAILED[/red]. Abortando...")
+        sys.exit(1)
+    
+    ast = parser.parse(iter(tokens))
+
+    if has_errors(stage="PARSER") or ast is None:
+        print("\n[red]Parser check: FAILED[/red].")
+        sys.exit(1)
+    
+    print("\n[green]Parser check: SUCCESS[/green]")
+    
+    checker = Checker()
+    checker.check(ast)
+
+    if has_errors(stage="CHECKER") or ast is None:
+        print("\n[red]Checker: FAILED[/red].")
+        sys.exit(1)
+
+    print("\n[green]Checker: SUCCESS[/green]")
+
+    # ir = IRCodeGen.generate(ast)
+    # print(ir.format())
+
+    # interp = IRInterpreter(ir, trace=True)
+    # interp.run("main")
+    
+
+if __name__ == '__main__':
+    main()

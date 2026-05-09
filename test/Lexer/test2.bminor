@@ -1,0 +1,3 @@
+a = 0123;        // entero mal formado
+b = 0.1e;        // float mal formado
+c = 09;         // otro inválido

@@ -1,8 +1,1 @@
-a = 10;
-b = 20.5;
-c = 'x';
-d = "hola";
-
-if a < b {
-    print d;
-}
+x : integer = 99;          // Error: Literal entero no soportado (empieza por 0)

@@ -502,48 +502,39 @@ class Parser(sly.Parser):
         print(f"Error de sintaxis en línea {p.lineno}: saltando hasta el próximo ';' para continuar.")
         return p.stmt_list
 
-    def error(self, p): # Esto hay que mejorarlo mucho
-        if p:
-            error(f"Error de sintaxis cerca de '{p.value}'", p.lineno)
-        else:
-            error("Error de sintaxis al final del archivo", "EOF")
+    def error(self, p):
+            from errors import error
+            
+            #Llevo un rato en este código y gemini me dice que ponga esto, aún no entiendo por qué xd
+            if not p:
+                error("Error de sintaxis: se llegó al final del archivo (EOF) inesperadamente", stage="PARSER")
+                return
+            
+            token_type = p.type
+            token_value = p.value
+            lineno = p.lineno
 
-# if __name__ == "__main__":
-#     import sys
-#     from lexer import Lexer
+            keywords = ('ARRAY', 'INTEGER', 'FLOAT', 'BOOLEAN', 'CHAR', 'STRING', 
+            'IF', 'ELSE', 'WHILE', 'FOR', 'FUNCTION', 'RETURN', 'CLASS')
 
-#     if len(sys.argv) < 2:
-#         print("Uso: python parser.py archivo.bminor")
-#         sys.exit(1)
-#     #Filename es el directorio que busca del testeo, test/good0.bminor por ejemplo
-#     filename = sys.argv[1]
+            assignment_ops = ('=', '+=', '-=', '*=', '/=', '%=')
 
-#     with open(filename, "r", encoding="utf-8") as f:
-#         text = f.read()
+            if token_type in keywords:
+                msg = (f"La palabra clave '{token_value}' no puede aparecer aquí.")
+            elif token_type == ']':
+                msg = "Se encontró un ']' vacío, por favor especifica el tamaño"
+            elif token_type == '}':
+                msg = "Se encontró '}' inesperadamente"
+            elif token_type == ')':
+                msg = "Se encontró ')', se esperaba una expresión o parámetro"
+            elif token_type in ('INTEGER_LITERAL', 'FLOAT_LITERAL', 'STRING_LITERAL', 'CHAR_LITERAL'):
+                msg = (f"Se encontró el valor '{token_value}', pero aquí se esperaba una definición de tipo, un nombre de variable o un operador")
+            elif token_type == 'ID':
+                msg = f"Identificador inesperado '{token_value}'"
+            elif token_type in assignment_ops:
+                msg = (f"El operador '{token_value}' no está permitido por ser de nivel superior (top-level)")
+            else:
+                msg = f"Error de sintaxis cerca de '{token_value}', no se esperaba en este contexto"
 
-#     lexer = Lexer()
-#     parser = Parser()
-
-#     ast = parser.parse(lexer.tokenize(text))
-
-#     if ast is None:
-#         print("No se generó AST debido a problemas de sintaxis")
-#         sys.exit(1)
-
-#     print("\nAST generado:\n")
-    
-#     from rich import print
-#     from rich.pretty import pprint
-#     from visualizers import ASTVisualizer
-#     from visualizers import graphviz_ast
-
-#     tree = ASTVisualizer.ast_to_tree(ast)
-#     print(tree)
-
-#     dot = graphviz_ast.build_graphviz(ast)
-#     dot.render("AST graphviz/ast", format="png", view=True)
-
-#     from checker import Checker
-
-#     checker = Checker()
-#     checker.check(ast)
+            # Enviarlo a tu gestor de errores
+            error(msg, lineno, stage="PARSER")

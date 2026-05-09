@@ -1,0 +1,4 @@
+/* Incorrect initializer for array */
+/*Por cierto, en consola solo aparecerá que hay error en el [], ya cuando el usuario arregle el problema...*/
+/*Aparecerá el error de las ; en vez de ,*/
+a : array [] integer = { 1 ; 2; 3} ;

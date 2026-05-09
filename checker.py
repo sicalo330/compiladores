@@ -82,10 +82,6 @@ class Checker(Visitor):
             self.error(f"Arreglo '{node.name}' ya declarado en este ámbito",node)
             return
 
-        # array_type = f"array<{base_type}>"
-        # self.symtab.add(node.name, {"kind": "array", "type": array_type})
-        # node.type = array_type
-
         self.symtab.add(node.name, {"kind": "array", "type": full_type})
 
         if node.elements:
@@ -222,7 +218,6 @@ class Checker(Visitor):
             return "error"
         return symbol.get("type", "error")
 
-    #Cambios aquí
     @multimethod
     def _visit(self, node: ArrayAccess):
         symbol = self.symtab.get(node.name)
@@ -238,7 +233,6 @@ class Checker(Visitor):
             if idx_type != "error" and idx_type != "integer":
                 self.error(f"El índice del arreglo debe ser integer, se obtuvo {idx_type}", node)
 
-        #Si es un ArraySizedType o ArrayType, extraemos el elem_type
         if isinstance(base_type, (ArrayType, ArraySizedType)):
             return self.get_type(base_type.elem_type)
         
@@ -254,10 +248,8 @@ class Checker(Visitor):
             self.error(f"'{node.name}' no es una función declarada", node)
             return "error"
 
-        # Extraemos el tipo de la función
         func_type = symbol.get("type")
         
-        # 1. Validar que realmente sea una función
         if not isinstance(func_type, FuncType):
             self.error(f"'{node.name}' no es una función", node)
             return "error"
@@ -265,12 +257,9 @@ class Checker(Visitor):
         params = func_type.params
         args = node.args
 
-        # 2. Validar cantidad de argumentos
         if len(params) != len(args):
             self.error(f"La función '{node.name}' esperaba {len(params)} argumentos, recibió {len(args)}", node)
 
-        # 3. Validar tipos de argumentos
-        # Usamos zip para comparar uno a uno hasta donde alcancen los parámetros
         for i, (param, arg_expr) in enumerate(zip(params, args)):
             arg_type = self.visit(arg_expr)
             param_type = self.get_type(param.datatype)
@@ -278,19 +267,14 @@ class Checker(Visitor):
             if arg_type == "error":
                 continue
 
-            # Lógica de compatibilidad de tipos
             compatible = False
-            
-            # Caso A: Tipos básicos idénticos (integer == integer, etc.)
+
             if arg_type == param_type:
                 compatible = True
             
-            # Caso B: Compatibilidad de Arreglos (ArraySizedType vs ArrayType)
-            # Esto arregla el error de good7 donde pasas numbers (sized) a arr (unsized)
             elif isinstance(arg_type, (ArrayType, ArraySizedType)) and \
                     isinstance(param_type, (ArrayType, ArraySizedType)):
                 
-                # Obtenemos el tipo base de ambos (ej: 'integer')
                 arg_elem = self.get_type(arg_type.elem_type)
                 param_elem = self.get_type(param_type.elem_type)
                 
@@ -300,12 +284,10 @@ class Checker(Visitor):
             if not compatible:
                 self.error(f"Argumento {i+1} de '{node.name}' incorrecto: se esperaba {self.type_to_string(param_type)}, se obtuvo {self.type_to_string(arg_type)}", arg_expr)
 
-        # 4. Visitar argumentos extra si los hay (para detectar errores internos en ellos)
         if len(args) > len(params):
             for extra_arg in args[len(params):]:
                 self.visit(extra_arg)
 
-        # 5. Retornar el tipo de retorno de la función (esto permite encadenar expresiones)
         return self.get_type(func_type.ret_type)
 
     @multimethod
@@ -349,20 +331,6 @@ class Checker(Visitor):
         return str(t)
 
         return "void"
-
-
-    # def error(self, msg, node=None):
-    #         # Si nos pasan un nodo, extraemos su línea para el mensaje
-    #         if node and hasattr(node, 'lineno') and node.lineno > 0:
-    #             msg = f"Línea {node.lineno}: {msg}"
-            
-    #         if node:
-    #             msg = f"Línea {node.lineno}: {msg}"
-
-    #         # Evitamos mensajes duplicados
-    #         if msg not in self.error_set:
-    #             self.errors.append(msg)
-    #             self.error_set.add(msg)
 
     def get_type(self, datatype):
         if isinstance(datatype, SimpleType):
