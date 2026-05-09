@@ -324,6 +324,24 @@ class IRInterpreter:
 			frame.temps[out] = 1 if result else 0
 			return False
 
+		if op == "AND":
+			left = args[0]
+			right = args[1]
+			out = args[2]
+			left_val = self._get_operand(frame, left)
+			right_val = self._get_operand(frame, right)
+			frame.temps[out] = 1 if (left_val and right_val) else 0
+			return False
+
+		if op == "OR":
+			left = args[0]
+			right = args[1]
+			out = args[2]
+			left_val = self._get_operand(frame, left)
+			right_val = self._get_operand(frame, right)
+			frame.temps[out] = 1 if (left_val or right_val) else 0
+			return False
+
 		if op == "PRINT":
 			operand = args[0]
 			val = self._get_operand(frame, operand)
@@ -416,7 +434,7 @@ class IRInterpreter:
 			# STOREA value array_name index
 			source = args[0]
 			name = args[1]
-			index = int(args[2])
+			index = int(self._get_operand(frame, args[2]))
 			value = self._get_operand(frame, source)
 			# Get or create array
 			arr = self._load_var(frame, name)
@@ -427,6 +445,19 @@ class IRInterpreter:
 			while len(arr) <= index:
 				arr.append(0)
 			arr[index] = value
+			return False
+		
+		if op == "LOADA":
+			# LOADA dest array_name index
+			dest = args[0]
+			name = args[1]
+			index = int(self._get_operand(frame, args[2]))
+			arr = self._load_var(frame, name)
+			if not isinstance(arr, list) or index >= len(arr):
+				value = 0  # Default for out of bounds
+			else:
+				value = arr[index]
+			frame.temps[dest] = value
 			return False
 			
 		if op in {"STOREI", "STOREF", "STOREB", "STORES"}:
@@ -702,12 +733,16 @@ class IRInterpreter:
 			raise IRRuntimeError(f"Operando no resuelto: {operand_str}")
 		
 	def _store_var(self, frame: Frame, name: str, value: Any) -> None:
-		if name in frame.locals:
-			frame.locals[name] = value
-			return
+		# Buscar la variable desde el scope más interno al más externo.
+		for scope in reversed(frame.scopes):
+			if name in scope:
+				scope[name] = value
+				return
+		# Si no está en ningún scope local, actualizar globals si existe.
 		if name in self.globals:
 			self.globals[name] = value
 			return
+		# Fallback: crear en el scope actual.
 		frame.locals[name] = value
 		
 	def _jump_to_label(self, frame: Frame, label: str) -> int:

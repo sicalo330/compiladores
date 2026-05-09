@@ -48,6 +48,9 @@ class IRProgram:
 
         return "\n".join(out)
 
+    def has_function(self, name: str) -> bool:
+        return any(fn.name == name for fn in self.functions)
+
 
 class IRCodeGen(Visitor):
 
@@ -98,6 +101,8 @@ class IRCodeGen(Visitor):
             return self.visit_literal(node)
         elif isinstance(node, Location):
             return self.visit_location(node)
+        elif isinstance(node, ArrayAccess):
+            return self.visit_arrayaccess(node)
         elif isinstance(node, FuncCall):
             return self.visit_funccall(node)
         else:
@@ -201,6 +206,10 @@ class IRCodeGen(Visitor):
         fn = IRFunction(node.name, [(p.name, p.datatype) for p in node.datatype.params], node.datatype)
         self.program.functions.append(fn)
 
+        # Si es un prototipo de función (sin cuerpo), no generar instrucciones
+        if node.body is None:
+            return
+
         prev = self.current_function
         self.current_function = fn
 
@@ -284,11 +293,16 @@ class IRCodeGen(Visitor):
 
     def visit_assign(self, node: AssignExpr):
         val = self.visit(node.expr)
-        # lval debe ser una Location
+        # lval puede ser Location o ArrayAccess
         if isinstance(node.lval, Location):
             self.emit("STORE", val, node.lval.name)
+        elif isinstance(node.lval, ArrayAccess):
+            if len(node.lval.index_list) != 1:
+                raise Exception("Multi-dimensional arrays not supported yet")
+            index = self.visit(node.lval.index_list[0])
+            self.emit("STOREA", val, node.lval.name, index)
         else:
-            raise Exception(f"Asignación a non-location no soportada: {type(node.lval)}")
+            raise Exception(f"Asignación a {type(node.lval)} no soportada")
         return val
 
     def visit_return(self, node: ReturnStmt):
@@ -302,12 +316,19 @@ class IRCodeGen(Visitor):
         cond = self.visit(node.cond)
 
         L_then = self.new_label()
+        L_else = self.new_label()
         L_end = self.new_label()
 
-        self.emit("CBRANCH", cond, L_then, L_end)
+        self.emit("CBRANCH", cond, L_then, L_else)
 
         self.emit("LABEL", L_then)
         self.visit(node.then_b)
+        self.emit("BRANCH", L_end)
+
+        self.emit("LABEL", L_else)
+        if node.else_b:
+            self.visit(node.else_b)
+
         self.emit("LABEL", L_end)
 
     def visit_while(self, node: WhileStmt):
@@ -357,6 +378,16 @@ class IRCodeGen(Visitor):
             self.emit("PUSH", val)
 
         self.emit("CALL", node.name, len(node.args))
+
+        func_storage = None
+        try:
+            func_storage = self.lookup(node.name)
+        except Exception:
+            pass
+
+        if func_storage is not None and isinstance(func_storage.ty, FuncType) and func_storage.ty.ret_type == SimpleType("void"):
+            return None
+
         result = self.new_temp()
         self.emit("POP", result)
         return result
@@ -383,6 +414,10 @@ class IRCodeGen(Visitor):
             self.emit("REM", left, right, out)
         elif node.op in {"<", "<=", ">", ">=", "==", "!="}:
             self.emit("CMP", node.op, left, right, out)
+        elif node.op == "&&":
+            self.emit("AND", left, right, out)
+        elif node.op == "||":
+            self.emit("OR", left, right, out)
         else:
             raise Exception(f"Operador no soportado: {node.op}")
 
@@ -455,8 +490,20 @@ class IRCodeGen(Visitor):
     
     def visit_location(self, node):
         storage = self.lookup(node.name)
+        if isinstance(storage.ty, (ArrayType, ArraySizedType)):
+            # Pasar arreglos por referencia como nombre de variable
+            return node.name
         tmp = self.new_temp()
         self.emit(self.load_opcode(storage.ty), node.name, tmp)
+        return tmp
+
+    def visit_arrayaccess(self, node):
+        # Assume 1D array for now
+        if len(node.index_list) != 1:
+            raise Exception("Multi-dimensional arrays not supported yet")
+        index = self.visit(node.index_list[0])
+        tmp = self.new_temp()
+        self.emit("LOADA", tmp, node.name, index)
         return tmp
 
     @classmethod

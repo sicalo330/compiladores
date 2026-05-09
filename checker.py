@@ -202,6 +202,10 @@ class Checker(Visitor):
         if left_type == "error" or right_type == "error":
             return "error"
 
+        if node.op in {"/", "%"} and isinstance(node.right, Literal) and node.right.value == 0:
+            self.error("División por cero detectada", node.right)
+            return "error"
+
         res = check_binop(left_type, node.op, right_type)
         if res is None:
             self.error(f"Operación inválida: {self.type_to_string(left_type)} {node.op} {self.type_to_string(right_type)}", node)

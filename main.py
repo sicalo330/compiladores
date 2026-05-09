@@ -7,7 +7,7 @@ from visualizers import ASTVisualizer
 from visualizers import graphviz_ast
 from checker import Checker
 from ircode_starter import IRCodeGen
-from irinterp import IRInterpreter
+from irinterp import IRInterpreter, IRRuntimeError
 from errors import *
 # from ircode_starter import IRCodeGen
 
@@ -105,12 +105,31 @@ def main():
 
     print("\n[green]Checker: SUCCESS[/green]")
 
-    # ir = IRCodeGen.generate(ast)
-    # print(ir.format())
+    try:
+        ir = IRCodeGen.generate(ast)
+    except Exception as e:
+        print(f"\n[red]Error de IR:[/red] {e}")
+        sys.exit(1)
 
-    # interp = IRInterpreter(ir, trace=True)
-    # interp.run("main")
+    print(ir.format())
+
+    if ir.has_function("main"):
+        main_fn = next((fn for fn in ir.functions if fn.name == "main"), None)
+        if main_fn is not None and len(main_fn.params) == 0:
+            interp = IRInterpreter(ir, trace=True)
+            try:
+                interp.run("main")
+            except IRRuntimeError as e:
+                print(f"\n[red]Error de ejecución:[/red] {e}")
+                sys.exit(1)
+        else:
+            print("\n[yellow]La función 'main' existe pero no es de cero parámetros. La representación intermedia se generó correctamente.[/yellow]")
+    else:
+        print("\n[yellow]No se encontró función 'main'. La representación intermedia se generó correctamente, pero no se puede ejecutar.[/yellow]")
     
+    if has_errors(stage="IR") or ast is None:
+        print("\n[red]IR: FAILED[/red].")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
