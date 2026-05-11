@@ -1,0 +1,1 @@
+x : integer = 99;          // Error: Literal entero no soportado (empieza por 0)
