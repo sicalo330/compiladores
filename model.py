@@ -23,13 +23,6 @@ class SimpleType(Type):
 class ArraySizedType(Type): 
     size: List[Expr]
     elem_type: Type
-
-    def accept(Visitor v):
-        v.visitArraySizedType()
-
-    # def accept(this, Visitor visitor):
-    #     visitor.visitArraySizedType(this)
-
 @dataclass 
 class ArrayType(Type): 
     elem_type: Type
