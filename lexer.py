@@ -20,27 +20,21 @@ class Lexer(sly.Lexer):
 	}
 	literals: str = '+-*/%^=:;,()[]{}!?'
 
-	# ignore
 	ignore: str = ' \t\r'
 
-	# ignore newline
 	@_(r"\n+")
-	def ignore_newline(self, t):
-		#Por si se pregunta, esto es lo que se encarga de aumentar en uno el lineno teniendo en cuenta los saltos de línea
-		self.lineno += t.value.count('\n')
+	def ignore_newline(self, t): self.lineno += t.value.count('\n') #Por si se pregunta, esto es lo que se encarga de aumentar en uno el lineno teniendo en cuenta los saltos de línea
 
 	# ignore comentarios
 	@_(r"\/\/[^\n]*")
-	def ignore_cppcomment(self, t):
-		pass
+	def ignore_cppcomment(self, t): pass
 
 	@_(r"\/\*[^*]*\*(\*|[^*/][^*]*\*)*\/")
-	def ignore_comment(self, t):
-		self.lineno += t.value.count('\n')
+	def ignore_comment(self, t): self.lineno += t.value.count('\n')
 
+	# Error de comentario
 	@_(r"/\*(.|\n)*?")
-	def malformed_comment(self, t):
-		error("Comentario mal formado, sin cerrar", t.lineno)
+	def malformed_comment(self, t): error("Comentario mal formado, sin cerrar", t.lineno)
 
 	# Operadores de relacion
 	LE = r'<='
@@ -54,9 +48,11 @@ class Lexer(sly.Lexer):
 	LAND = r'&&'
 	LOR  = r'\|\|'
 
+	# Incremento y decremento
 	INC = r'\+\+'
 	DEC = r'--'
 
+	# Operadores de asignación
 	ADDEQ = r'\+='
 	SUBEQ = r'-='
 	MULEQ = r'\*='
@@ -97,8 +93,7 @@ class Lexer(sly.Lexer):
 		return t
 
 	@_(r"'.")
-	def malformed_char(self, t):
-		error(f"malformado CHAR", t.lineno)
+	def malformed_char(self, t): error(f"malformado CHAR", t.lineno)
 
 	# Float
 	@_(r"\d*(\.\d+)?[eE][-+]?[1-9]\d*|\d*\.\d+")
@@ -107,8 +102,7 @@ class Lexer(sly.Lexer):
 		return t
 
 	@_(r'(0\d+)((\.\d+(e[-+]?\d+)?)|(e[-+]?\d+))')
-	def malformed_float(self, t):
-		error(f"Literal de punto flotante '{t.value}' no sportado", t.lineno)
+	def malformed_float(self, t): error(f"Literal de punto flotante '{t.value}' no sportado", t.lineno)
 
 	# Integer
 	@_(r"[1-9]\d*|0")
@@ -117,8 +111,7 @@ class Lexer(sly.Lexer):
 		return t
 
 	@_(r'0\d+')
-	def malformed_integer(self, t):
-		error(f"Literal entero '{t.value}' no sportado", t.lineno)
+	def malformed_integer(self, t): error(f"Literal entero '{t.value}' no sportado", t.lineno)
 
 	# String
 	@_(r'\"([^"\\]*(\\.[^"\\]*)*)\"')
@@ -155,12 +148,8 @@ if __name__ == '__main__':
 	import sys
 
 	if sys.platform != 'ios':
-
-		if len(sys.argv) != 2:
-			raise SystemExit("Usage: python glexer.py <filename>")
-
+		if len(sys.argv) != 2: raise SystemExit("Usage: python glexer.py <filename>")
 		filename = sys.argv[1]
-
 	else:
 		from File_Picker import file_picker_dialog
 
@@ -170,5 +159,4 @@ if __name__ == '__main__':
 			file_pattern='^.*[.]bminor'
 		)
 
-	if filename:
-		tokenize(filename)
+	if filename: tokenize(filename)

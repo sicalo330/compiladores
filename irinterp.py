@@ -1,18 +1,14 @@
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-
 class IRRuntimeError(RuntimeError):
 	"""Generic IR interpreter error."""
-	
-	
+		
 class IRReturn(Exception):
 	def __init__(self, value: Any):
 		self.value = value
-		
-		
+
 @dataclass
 class IRFunction:
 	"""
@@ -27,12 +23,10 @@ class IRFunction:
 	return_type: Any = None
 	instructions: list[tuple] = field(default_factory=list)
 	
-	
 @dataclass
 class IRModule:
 	globals: list[tuple] = field(default_factory=list)
 	functions: list[Any] = field(default_factory=list)
-	
 	
 @dataclass
 class Frame:
@@ -57,7 +51,6 @@ class Frame:
 					raise IRRuntimeError(f"LABEL inválido: {inst}")
 				labels[inst[1]] = i
 		return labels
-		
 		
 class IRInterpreter:
 	"""

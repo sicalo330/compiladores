@@ -73,7 +73,7 @@ class Parser(sly.Parser):
 
     @_("ID ':' type_array_sized '=' '{' opt_expr_list '}' ';'")
     def decl_init(self, p):
-        return _L(ArrayDecl(p.ID, p.type_array_sized, p.expr_list), p.lineno)
+        return _L(ArrayDecl(p.ID, p.type_array_sized, p.opt_expr_list), p.lineno)
 
     @_('ID ":" type_func "=" "{" opt_stmt_list "}"')
     def decl_init(self, p):
