@@ -25,7 +25,6 @@ class IRFunction:
     return_type: Type
     instructions: list[Instruction] = field(default_factory=list)
 
-
 @dataclass
 class IRProgram:
     globals: list[Instruction] = field(default_factory=list)
@@ -34,12 +33,13 @@ class IRProgram:
     def format(self) -> str:
         out = []
 
+        out.append("# Globals")
         if self.globals:
-            out.append("# Globals")
-            for inst in self.globals:
-                out.append(str(inst))
-            out.append("")
-
+            for inst in self.globals: out.append(str(inst))
+        else: out.append("No Globals in this program")
+        out.append("")
+        
+        out.append("Functions")
         for fn in self.functions:
             out.append(f"function {fn.name}")
             for inst in fn.instructions:
@@ -51,9 +51,7 @@ class IRProgram:
     def has_function(self, name: str) -> bool:
         return any(fn.name == name for fn in self.functions)
 
-
 class IRCodeGen(Visitor):
-
     def __init__(self):
         self.program = IRProgram()
         self.current_function: Optional[IRFunction] = None
@@ -107,18 +105,19 @@ class IRCodeGen(Visitor):
             return self.visit_funccall(node)
         else:
             raise Exception(f"Visit no implementado para {type(node)}")
+        # Tremendo if
 
     # =================================================
     # HELPERS
     # =================================================
 
-    #Esta función hace para guardar variables temporales
+    #Esta función guarda las variables temporales
     #R1, R10 y demás
     def new_temp(self):
         self.temp_count += 1
         return f"R{self.temp_count}"
 
-    #Lo mismo que arriba pero con L al principio
+    #Lo mismo que arriba pero para labels
     def new_label(self):
         self.label_count += 1
         return f"L{self.label_count}"
@@ -130,6 +129,10 @@ class IRCodeGen(Visitor):
         else:
             self.program.globals.append(inst)
 
+    #============================
+    #Manejo de scope
+    #============================
+
     def push_scope(self):
         self.scopes.append({})
 
@@ -140,11 +143,10 @@ class IRCodeGen(Visitor):
         self.scopes[-1][storage.name] = storage
 
     def lookup(self, name):
-        # print(self.current_function)
-        # print(name)
+        #print(self.current_function)
+        #print(name)
         for scope in reversed(self.scopes):
-            if name in scope:
-                return scope[name]
+            if name in scope: return scope[name]
         raise Exception(f"Variable no encontrada: {name}")
     
     #============================
@@ -165,18 +167,14 @@ class IRCodeGen(Visitor):
                 return "V"
         raise NotImplementedError(f"Tipo no soportado: {ty}")
 
-
     def load_opcode(self, ty: Type) -> str:
         return f"LOAD{self.type_suffix(ty)}"
-
 
     def store_opcode(self, ty: Type) -> str:
         return f"STORE{self.type_suffix(ty)}"
 
-
     def alloc_opcode(self, ty: Type) -> str:
         return f"ALLOC{self.type_suffix(ty)}"
-
 
     def print_opcode(self, ty: Type) -> str:
         return f"PRINT{self.type_suffix(ty)}"
@@ -189,15 +187,11 @@ class IRCodeGen(Visitor):
         self.push_scope()
 
         for decl in node.decls:
-            if isinstance(decl, VarDecl):
-                self.bind(Storage(decl.name, decl.datatype, is_global=True))
-            elif isinstance(decl, ArrayDecl):
-                self.bind(Storage(decl.name, decl.datatype, is_global=True))
-            elif isinstance(decl, FuncDecl):
-                self.bind(Storage(decl.name, decl.datatype, is_global=True))
+            if isinstance(decl, VarDecl): self.bind(Storage(decl.name, decl.datatype, is_global=True))
+            elif isinstance(decl, ArrayDecl): self.bind(Storage(decl.name, decl.datatype, is_global=True))
+            elif isinstance(decl, FuncDecl): self.bind(Storage(decl.name, decl.datatype, is_global=True))
 
-        for decl in node.decls:
-            self.visit(decl)
+        for decl in node.decls: self.visit(decl)
 
         self.pop_scope()
         return self.program
@@ -207,19 +201,16 @@ class IRCodeGen(Visitor):
         self.program.functions.append(fn)
 
         # Si es un prototipo de función (sin cuerpo), no generar instrucciones
-        if node.body is None:
-            return
+        if node.body is None: return
 
         prev = self.current_function
         self.current_function = fn
 
         self.push_scope()
 
-        for p in node.datatype.params:
-            self.bind(Storage(p.name, p.datatype, is_param=True))
+        for p in node.datatype.params: self.bind(Storage(p.name, p.datatype, is_param=True))
 
-        for stmt in node.body:
-            self.visit(stmt)
+        for stmt in node.body: self.visit(stmt)
 
         self.emit("RET")
 
@@ -229,13 +220,12 @@ class IRCodeGen(Visitor):
     def visit_block(self, node: BlockStmt):
         self.emit("ENTER")
         self.push_scope()
-        for stmt in node.stmts:
-            self.visit(stmt)
+        for stmt in node.stmts: self.visit(stmt)
         self.pop_scope()
         self.emit("EXIT")
 
     # =================================================
-    # DECLARATIONS
+    # DECLARATIONS OF VARIABLES
     # =================================================
 
     def visit_vardecl(self, node: VarDecl):
@@ -273,44 +263,35 @@ class IRCodeGen(Visitor):
         for expr in node.exprs:
             if isinstance(expr, Literal):
                 val = self.visit(expr)
-                if isinstance(expr.value, str) and len(expr.value) == 1:
-                    self.emit("PRINTB", val)
-                else:
-                    self.emit("PRINT", val)
+                if isinstance(expr.value, str) and len(expr.value) == 1: self.emit("PRINTB", val)
+                else: self.emit("PRINT", val)
             elif isinstance(expr, Location):
                 storage = self.lookup(expr.name)
                 val = self.visit(expr)
-                if isinstance(storage.ty, SimpleType) and storage.ty.name == "char":
-                    self.emit("PRINTB", val)
-                else:
-                    self.emit("PRINT", val)
+                if isinstance(storage.ty, SimpleType) and storage.ty.name == "char": self.emit("PRINTB", val)
+                else: self.emit("PRINT", val)
             else:
                 val = self.visit(expr)
                 self.emit("PRINT", val)
 
-    def visit_exprstmt(self, node: ExprStmt):
-        self.visit(node.expr)
+    def visit_exprstmt(self, node: ExprStmt): self.visit(node.expr)
 
     def visit_assign(self, node: AssignExpr):
         val = self.visit(node.expr)
         # lval puede ser Location o ArrayAccess
-        if isinstance(node.lval, Location):
-            self.emit("STORE", val, node.lval.name)
+        if isinstance(node.lval, Location): self.emit("STORE", val, node.lval.name)
         elif isinstance(node.lval, ArrayAccess):
-            if len(node.lval.index_list) != 1:
-                raise Exception("Multi-dimensional arrays not supported yet")
+            if len(node.lval.index_list) != 1: raise Exception("Multi-dimensional arrays not supported yet")
             index = self.visit(node.lval.index_list[0])
             self.emit("STOREA", val, node.lval.name, index)
-        else:
-            raise Exception(f"Asignación a {type(node.lval)} no soportada")
+        else: raise Exception(f"Asignación a {type(node.lval)} no soportada")
         return val
 
     def visit_return(self, node: ReturnStmt):
         if node.expr:
             val = self.visit(node.expr)
             self.emit("RET", val)
-        else:
-            self.emit("RET")
+        else: self.emit("RET")
 
     def visit_if(self, node: IfStmt):
         cond = self.visit(node.cond)
@@ -326,8 +307,7 @@ class IRCodeGen(Visitor):
         self.emit("BRANCH", L_end)
 
         self.emit("LABEL", L_else)
-        if node.else_b:
-            self.visit(node.else_b)
+        if node.else_b: self.visit(node.else_b)
 
         self.emit("LABEL", L_end)
 
