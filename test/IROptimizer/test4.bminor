@@ -1,0 +1,4 @@
+/*Comparación de constantes*/
+main: function void () = {
+    print 4 < 5;
+}

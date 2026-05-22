@@ -1,0 +1,31 @@
+/*Ignorar simplificaciones algebraicas anteriores y tomar esta como verdadera*/
+/* Test completo simplificación algebraica O1 */
+
+main: function void () = {
+
+    a: integer = 7;
+
+    /*x + 0*/
+    print a + 0;
+
+    /*0 + x*/
+    print 0 + a;
+
+    /*x - 0*/
+    print a - 0;
+
+    /*x * 1*/
+    print a * 1;
+
+    /*1 * x*/
+    print 1 * a;
+
+    /*x * 0*/
+    print a * 0;
+
+    /*0 * x*/
+    print 0 * a;
+
+    /*x / 1*/
+    print a / 1;
+}

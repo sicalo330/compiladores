@@ -1,3 +1,4 @@
+/*Constant folding*/
 main: function void () = {
     a: integer = 2;
     b: integer = 3;

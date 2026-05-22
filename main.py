@@ -10,7 +10,7 @@ from checker import Checker
 from ircode_starter import IRCodeGen
 from irinterp import IRInterpreter, IRRuntimeError
 from errors import *
-# from ircode_starter import IRCodeGen
+from iroptimizer import IROptimizer, parse_opt_level
 
 def load_file():
     if len(sys.argv) < 2:
@@ -25,7 +25,7 @@ def load_file():
         print(f"[bold red]Error:[/bold red] El archivo '{filename}' no existe.")
         sys.exit(1)
 
-def detectErrors():
+def detectErrors(ast):
     if not errors_detected():
         print("\n[green]Parser check: SUCCESS[/green]")
     else:
@@ -35,7 +35,7 @@ def detectErrors():
         print("No se generó AST debido a problemas de sintaxis")
         sys.exit(1)
     
-def generateAST():
+def generateAST(ast):
     print("\nAST generado:\n")
     tree = ASTVisualizer.ast_to_tree(ast)
     print(tree)
@@ -80,8 +80,20 @@ def main():
         print(f"\n[red]Error de IR:[/red] {e}")
         sys.exit(1)
 
+    opt_level = 0
+    if len(sys.argv) >= 3: #Para poder ejecutar la optimización O1 se requiere poner un -O1 al final
+        #Es decir python main.py test/test0.bminor -O1 por ejemplo
+        try:
+            opt_level = parse_opt_level(sys.argv[2])
+        except Exception:
+            try:
+                opt_level = int(sys.argv[2])
+            except Exception:
+                opt_level = 0
 
-    # OPTIMIZADOR VA AQUÍ
+    if opt_level >= 1:
+        ir = IROptimizer.optimize(ir, level=opt_level)
+
     with open("test/IR/IRToOptimize.pickle", "wb") as f:
         pickle.dump(ir, f)
 

@@ -1,0 +1,7 @@
+/*División entre cero no debe optimizarse*/
+main: function void () = {
+    a: integer = 10;
+    b: integer = 0;
+
+    print a / b;
+}

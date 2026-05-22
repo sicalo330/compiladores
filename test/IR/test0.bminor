@@ -1,0 +1,17 @@
+main: function void () = {
+    a: integer = 10;
+    b: integer = 5;
+    c: integer;
+
+    c = a + b;
+    print c;
+
+    c = a - b;
+    print c;
+
+    c = a * b;
+    print c;
+
+    c = a / b;
+    print c;
+}

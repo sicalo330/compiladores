@@ -1,0 +1,9 @@
+main: function void () = {
+    a: integer = 10;
+    b: integer = 20;
+
+    print a < b;
+    print a > b;
+    print a == b;
+    print a != b;
+}

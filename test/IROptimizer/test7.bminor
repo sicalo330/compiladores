@@ -1,0 +1,5 @@
+/*Inalcanzable dspués del return*/
+main: function void () = {
+    return;
+    print 999;
+}

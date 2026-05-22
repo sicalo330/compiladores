@@ -1,0 +1,7 @@
+/*Multiplicación constante*/
+main: function void () = {
+    a: integer = 10;
+    b: integer = 5;
+
+    print a * b;
+}

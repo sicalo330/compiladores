@@ -1,0 +1,12 @@
+x: integer = 100;
+
+main: function void () = {
+    print x;
+
+    {
+        x: integer = 50;
+        print x;
+    }
+
+    print x;
+}

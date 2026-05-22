@@ -1,0 +1,8 @@
+/*Branch folding*/
+main: function void () = {
+    if (1 < 2) {
+        print 111;
+    } else {
+        print 222;
+    }
+}

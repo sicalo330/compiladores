@@ -1,0 +1,4 @@
+/*Comparación falsa*/
+main: function void () = {
+    print 10 < 3;
+}
