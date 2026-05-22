@@ -255,7 +255,7 @@ class IRCodeGen(Visitor):
     # STATEMENTS
     # =================================================
 
-    def visit_assignment(self, node: Assignment):
+    def visit_assignment(self, node: Assignment): # ???
         val = self.visit(node.expr)
         self.emit("STORE", val, node.loc.name)
 
@@ -381,7 +381,7 @@ class IRCodeGen(Visitor):
         right = self.visit(node.right)
         out = self.new_temp()
 
-        #Tengo entendido que python no usa case, entonces nos tocó usar if
+        #Tengo entendido que python no usa case (claro que sí, se llama match), entonces nos tocó usar if
         if node.op == "+":
             self.emit("ADD", left, right, out)
         elif node.op == "-":
@@ -491,3 +491,15 @@ class IRCodeGen(Visitor):
         gen = cls()
         gen.visit(node)
         return gen.program
+
+# Tanto el checker como el ircode_starter tienen una muy mala implementación del patrón Visitor.
+
+# Idealmente, si estuviera bien, para la optimización solo tendría que crear una subclase que se
+# encargue de eso y no sería complejo, pero estructurar eso ahora es casi imposible con el tiempo que
+# hay
+
+# El patrón no permite que solo se aplique parcialmente bien. O es en todo o no es en nada. Entonces la
+# optimización será compleja.
+
+# Realmente el fallo es que tanto Checker como IRCodeGen son clases dioses que hacen todo, cuando
+# solo deberían ser directores que dirigen las subclases de tanto los nodos como los visitors.

@@ -1,4 +1,5 @@
 import sys
+import pickle # Para poder guardar la representación intermedia y poder hacer pruebas en el optimizador
 from lexer import Lexer
 from parser import Parser
 from rich import print
@@ -42,39 +43,7 @@ def generateAST():
     dot = graphviz_ast.build_graphviz(ast)
     dot.render("AST graphviz/ast", format="png", view=True)
 
-#----------------------------------
-# Ejecutar main.py
-#----------------------------------
-#Al parecer esto es bueno porque a la larga se genera mucha basura
-# clearErrors()
-
-# text = verifyLenghtFiles()
-
-# lexer = Lexer()
-# parser = Parser()
-
-# ast = parser.parse(lexer.tokenize(text))
-
-#Este manejador de errores solo será temporal
-# detectErrors()
-
-#-----------No borrar esto-------------
-# generateAST()
-#---------------------------------------
-
-# checker = Checker()
-
-# checker.check(ast)
-
-# if errors_detected():
-#     print("\n[red]Semantic check: FAILED[/red]")
-#     sys.exit(1)
-
-# ir = IRCodeGen.generate(ast)
-# print(ir.format())
-
-# interp = IRInterpreter(ir, trace=True)
-# interp.run("main")
+# Borré el código comentado de aquí ya que era inútil
 
 def main():
     clearErrors() # Asegúrate que esta función limpie _errors_detected y la lista
@@ -110,6 +79,11 @@ def main():
     except Exception as e:
         print(f"\n[red]Error de IR:[/red] {e}")
         sys.exit(1)
+
+
+    # OPTIMIZADOR VA AQUÍ
+    with open("test/IR/IRToOptimize.pickle", "wb") as f:
+        pickle.dump(ir, f)
 
     print(ir.format())
 
