@@ -1,0 +1,16 @@
+# Globals
+No Globals in this program
+
+Functions
+function main
+  ('MOVI', 10, 'R1')
+  ('MOVI', 3, 'R2')
+  ('MOVI', 0, 'R3')
+  ('PRINT', 'R3')
+  ('RET',)
+
+[main pc=0] ('MOVI', 10, 'R1') stack=[] locals={}
+[main pc=1] ('MOVI', 3, 'R2') stack=[] locals={}
+[main pc=2] ('MOVI', 0, 'R3') stack=[] locals={}
+[main pc=3] ('PRINT', 'R3') stack=[] locals={}
+0[main pc=4] ('RET',) stack=[] locals={}

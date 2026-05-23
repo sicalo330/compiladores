@@ -1,0 +1,33 @@
+# Globals
+No Globals in this program
+
+Functions
+function main
+  ('MOVI', 1, 'R1')
+  ('MOVI', 2, 'R2')
+  ('MOVI', 1, 'R3')
+  ('LABEL', 'L1')
+  ('ENTER',)
+  ('MOVI', 1, 'R4')
+  ('PRINT', 'R4')
+  ('EXIT',)
+  ('BRANCH', 'L3')
+  ('LABEL', 'L2')
+  ('LABEL', 'L3')
+  ('MOVI', 2, 'R5')
+  ('PRINT', 'R5')
+  ('RET',)
+
+[main pc=0] ('MOVI', 1, 'R1') stack=[] locals={}
+[main pc=1] ('MOVI', 2, 'R2') stack=[] locals={}
+[main pc=2] ('MOVI', 1, 'R3') stack=[] locals={}
+[main pc=3] ('LABEL', 'L1') stack=[] locals={}
+[main pc=4] ('ENTER',) stack=[] locals={}
+[main pc=5] ('MOVI', 1, 'R4') stack=[] locals={}
+[main pc=6] ('PRINT', 'R4') stack=[] locals={}
+1[main pc=7] ('EXIT',) stack=[] locals={}
+[main pc=8] ('BRANCH', 'L3') stack=[] locals={}
+[main pc=10] ('LABEL', 'L3') stack=[] locals={}
+[main pc=11] ('MOVI', 2, 'R5') stack=[] locals={}
+[main pc=12] ('PRINT', 'R5') stack=[] locals={}
+2[main pc=13] ('RET',) stack=[] locals={}

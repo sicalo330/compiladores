@@ -1,0 +1,78 @@
+# Globals
+No Globals in this program
+
+Functions
+function main
+  ('ALLOC', 'a')
+  ('MOVI', 7, 'R1')
+  ('STORE', 'R1', 'a')
+  ('MOVI', 7, 'R2')
+  ('MOVI', 0, 'R3')
+  ('MOVI', 7, 'R4')
+  ('PRINT', 'R4')
+  ('MOVI', 0, 'R5')
+  ('MOVI', 7, 'R6')
+  ('MOVI', 7, 'R7')
+  ('PRINT', 'R7')
+  ('MOVI', 7, 'R8')
+  ('MOVI', 0, 'R9')
+  ('MOVI', 7, 'R10')
+  ('PRINT', 'R10')
+  ('MOVI', 7, 'R11')
+  ('MOVI', 1, 'R12')
+  ('MOVI', 7, 'R13')
+  ('PRINT', 'R13')
+  ('MOVI', 1, 'R14')
+  ('MOVI', 7, 'R15')
+  ('MOVI', 7, 'R16')
+  ('PRINT', 'R16')
+  ('MOVI', 7, 'R17')
+  ('MOVI', 0, 'R18')
+  ('MOVI', 0, 'R19')
+  ('PRINT', 'R19')
+  ('MOVI', 0, 'R20')
+  ('MOVI', 7, 'R21')
+  ('MOVI', 0, 'R22')
+  ('PRINT', 'R22')
+  ('MOVI', 7, 'R23')
+  ('MOVI', 1, 'R24')
+  ('MOVI', 7, 'R25')
+  ('PRINT', 'R25')
+  ('RET',)
+
+[main pc=0] ('ALLOC', 'a') stack=[] locals={}
+[main pc=1] ('MOVI', 7, 'R1') stack=[] locals={'a': 0}
+[main pc=2] ('STORE', 'R1', 'a') stack=[] locals={'a': 0}
+[main pc=3] ('MOVI', 7, 'R2') stack=[] locals={'a': 7}
+[main pc=4] ('MOVI', 0, 'R3') stack=[] locals={'a': 7}
+[main pc=5] ('MOVI', 7, 'R4') stack=[] locals={'a': 7}
+[main pc=6] ('PRINT', 'R4') stack=[] locals={'a': 7}
+7[main pc=7] ('MOVI', 0, 'R5') stack=[] locals={'a': 7}
+[main pc=8] ('MOVI', 7, 'R6') stack=[] locals={'a': 7}
+[main pc=9] ('MOVI', 7, 'R7') stack=[] locals={'a': 7}
+[main pc=10] ('PRINT', 'R7') stack=[] locals={'a': 7}
+7[main pc=11] ('MOVI', 7, 'R8') stack=[] locals={'a': 7}
+[main pc=12] ('MOVI', 0, 'R9') stack=[] locals={'a': 7}
+[main pc=13] ('MOVI', 7, 'R10') stack=[] locals={'a': 7}
+[main pc=14] ('PRINT', 'R10') stack=[] locals={'a': 7}
+7[main pc=15] ('MOVI', 7, 'R11') stack=[] locals={'a': 7}
+[main pc=16] ('MOVI', 1, 'R12') stack=[] locals={'a': 7}
+[main pc=17] ('MOVI', 7, 'R13') stack=[] locals={'a': 7}
+[main pc=18] ('PRINT', 'R13') stack=[] locals={'a': 7}
+7[main pc=19] ('MOVI', 1, 'R14') stack=[] locals={'a': 7}
+[main pc=20] ('MOVI', 7, 'R15') stack=[] locals={'a': 7}
+[main pc=21] ('MOVI', 7, 'R16') stack=[] locals={'a': 7}
+[main pc=22] ('PRINT', 'R16') stack=[] locals={'a': 7}
+7[main pc=23] ('MOVI', 7, 'R17') stack=[] locals={'a': 7}
+[main pc=24] ('MOVI', 0, 'R18') stack=[] locals={'a': 7}
+[main pc=25] ('MOVI', 0, 'R19') stack=[] locals={'a': 7}
+[main pc=26] ('PRINT', 'R19') stack=[] locals={'a': 7}
+0[main pc=27] ('MOVI', 0, 'R20') stack=[] locals={'a': 7}
+[main pc=28] ('MOVI', 7, 'R21') stack=[] locals={'a': 7}
+[main pc=29] ('MOVI', 0, 'R22') stack=[] locals={'a': 7}
+[main pc=30] ('PRINT', 'R22') stack=[] locals={'a': 7}
+0[main pc=31] ('MOVI', 7, 'R23') stack=[] locals={'a': 7}
+[main pc=32] ('MOVI', 1, 'R24') stack=[] locals={'a': 7}
+[main pc=33] ('MOVI', 7, 'R25') stack=[] locals={'a': 7}
+[main pc=34] ('PRINT', 'R25') stack=[] locals={'a': 7}
+7[main pc=35] ('RET',) stack=[] locals={'a': 7}

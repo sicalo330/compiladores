@@ -1,0 +1,28 @@
+# Globals
+No Globals in this program
+
+Functions
+function main
+  ('ALLOC', 'a')
+  ('MOVI', 10, 'R1')
+  ('STORE', 'R1', 'a')
+  ('ALLOC', 'b')
+  ('MOVI', 5, 'R2')
+  ('STORE', 'R2', 'b')
+  ('MOVI', 10, 'R3')
+  ('MOVI', 5, 'R4')
+  ('MOVI', 50, 'R5')
+  ('PRINT', 'R5')
+  ('RET',)
+
+[main pc=0] ('ALLOC', 'a') stack=[] locals={}
+[main pc=1] ('MOVI', 10, 'R1') stack=[] locals={'a': 0}
+[main pc=2] ('STORE', 'R1', 'a') stack=[] locals={'a': 0}
+[main pc=3] ('ALLOC', 'b') stack=[] locals={'a': 10}
+[main pc=4] ('MOVI', 5, 'R2') stack=[] locals={'a': 10, 'b': 0}
+[main pc=5] ('STORE', 'R2', 'b') stack=[] locals={'a': 10, 'b': 0}
+[main pc=6] ('MOVI', 10, 'R3') stack=[] locals={'a': 10, 'b': 5}
+[main pc=7] ('MOVI', 5, 'R4') stack=[] locals={'a': 10, 'b': 5}
+[main pc=8] ('MOVI', 50, 'R5') stack=[] locals={'a': 10, 'b': 5}
+[main pc=9] ('PRINT', 'R5') stack=[] locals={'a': 10, 'b': 5}
+50[main pc=10] ('RET',) stack=[] locals={'a': 10, 'b': 5}

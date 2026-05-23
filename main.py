@@ -45,8 +45,14 @@ def generateAST(ast):
 
 # Borré el código comentado de aquí ya que era inútil
 
+def get_log_path(source_file: str, opt_level: int) -> str:
+    import os
+    base = os.path.splitext(os.path.basename(source_file))[0]
+    suffix = f'_O{opt_level}' if opt_level > 0 else ''
+    return f'test/logs/{base}{suffix}.txt'
+
 def main():
-    clearErrors() # Asegúrate que esta función limpie _errors_detected y la lista
+    clearErrors() #Limpia errores si los hay
     text = load_file()
     
     lexer = Lexer()
@@ -97,22 +103,49 @@ def main():
     with open("test/IR/IRToOptimize.pickle", "wb") as f:
         pickle.dump(ir, f)
 
-    print(ir.format())
+    import os, io
+
+    log_path = get_log_path(sys.argv[1], opt_level)
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+    ir_text = ir.format()
+    print(ir_text)
+
+    buf = io.StringIO()
+    old_stdout = sys.stdout
+    interp_error = None
 
     if ir.has_function("main"):
         main_fn = next((fn for fn in ir.functions if fn.name == "main"), None)
         if main_fn is not None and len(main_fn.params) == 0:
+            sys.stdout = buf
             interp = IRInterpreter(ir, trace=True)
             try:
                 interp.run("main")
             except IRRuntimeError as e:
-                print(f"\n[red]Error de ejecución:[/red] {e}")
-                sys.exit(1)
+                interp_error = e
+            sys.stdout = old_stdout
+            print(buf.getvalue())
+            if interp_error:
+                print(f"\n[red]Error de ejecucion:[/red] {interp_error}")
         else:
-            print("\n[yellow]La función 'main' existe pero no es de cero parámetros. La representación intermedia se generó correctamente.[/yellow]")
+            msg = "\nLa funcion main existe pero no es de cero parametros. La representacion intermedia se genero correctamente."
+            buf.write(msg + "\n")
+            print(f"[yellow]{msg}[/yellow]")
     else:
-        print("\n[yellow]No se encontró función 'main'. La representación intermedia se generó correctamente, pero no se puede ejecutar.[/yellow]")
-    
+        msg = "\nNo se encontro funcion main. La representacion intermedia se genero correctamente, pero no se puede ejecutar."
+        buf.write(msg + "\n")
+        print(f"[yellow]{msg}[/yellow]")
+
+    with open(log_path, "w", encoding="utf-8") as log_f:
+        log_f.write(ir_text + "\n")
+        log_f.write(buf.getvalue())
+
+    print(f"\nLog guardado en: {log_path}")
+
+    if interp_error:
+        sys.exit(1)
+
     if has_errors(stage="IR") or ast is None:
         print("\n[red]IR: FAILED[/red].")
         sys.exit(1)

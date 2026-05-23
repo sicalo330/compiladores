@@ -83,14 +83,46 @@ class IROptimizer:
                 if inst[1] == 0: self.alias[inst[2]] = "R0"
                 else: self.const[inst[2]] = inst[1]
             elif inst[0] in {"MOVB", 'MOVS'}: self.const[inst[2]] = inst[1]
-            elif inst[0] in {"STORE", "STOREI", "STOREF", "STOREB", "STORES", "STOREV"}: self.const[inst[2]] = self.const[inst[1]]
+            elif inst[0] in {"STORE", "STOREI", "STOREF", "STOREB", "STORES", "STOREV"}:
+                if inst[1] in self.const: self.const[inst[2]] = self.const[inst[1]]
             elif inst[0] == "STOREA":
-                if isinstance(inst[3], int): self.const[inst[2] + str(inst[3])] = self.const[inst[1]]
-                else: self.const[inst[2] + str(self.const[inst[3]])] = self.const[inst[1]]
-            elif inst[0] in {"LOAD", "LOADI", "LOADF", "LOADB", "LOADS", "LOADV"}: self.const[inst[2]] = self.const[inst[1]]
+                if inst[1] in self.const:
+                    if isinstance(inst[3], int): self.const[inst[2] + str(inst[3])] = self.const[inst[1]]
+                    elif inst[3] in self.const: self.const[inst[2] + str(self.const[inst[3]])] = self.const[inst[1]]
+            elif inst[0] in {"LOAD", "LOADI", "LOADF", "LOADB", "LOADS", "LOADV"}:
+                # Bug 1 fix: si el valor es conocido, convertir directamente en MOV y transformar
+                if inst[1] in self.const:
+                    val = self.const[inst[1]]
+                    if inst[0] in {"LOADF"} or isinstance(val, float):
+                        inst = ('MOVF', val, inst[2])
+                    elif inst[0] in {"LOADB"}:
+                        inst = ('MOVB', val, inst[2])
+                    elif inst[0] in {"LOADS"}:
+                        inst = ('MOVS', val, inst[2])
+                    else:
+                        inst = ('MOVI', val, inst[2])
+                    needsHandling = True  # Puede necesitar más optimizaciones
             elif inst[0] == "LOADA":
-                if isinstance(inst[3], int): self.const[inst[1]] = self.const[inst[2] + str(inst[3])]
-                else: self.const[inst[1]] = self.const[inst[2] + str(self.const[inst[3]])]
+                if isinstance(inst[3], int):
+                    key = inst[2] + str(inst[3])
+                    if key in self.const: self.const[inst[1]] = self.const[key]
+                elif inst[3] in self.const:
+                    key = inst[2] + str(self.const[inst[3]])
+                    if key in self.const: self.const[inst[1]] = self.const[key]
+            # Bug 2 fix: ENTER guarda un snapshot de const para las vars que se pisen localmente,
+            # EXIT restaura ese snapshot eliminando las entradas que se añadieron dentro del bloque
+            elif inst[0] == "ENTER":
+                self._scope_snapshot = dict(self.const)  # Guardar estado antes del bloque
+            elif inst[0] == "EXIT":
+                if hasattr(self, '_scope_snapshot'):
+                    # Quitar claves que no existían antes del bloque (vars locales del bloque)
+                    keys_to_remove = [k for k in self.const if k not in self._scope_snapshot]
+                    for k in keys_to_remove:
+                        del self.const[k]
+                    # Restaurar vars que fueron pisadas dentro del bloque (ej: x global)
+                    for k, v in self._scope_snapshot.items():
+                        self.const[k] = v
+                    del self._scope_snapshot
             
             # Constant folding
             elif self.needsConstantFolding(inst):
@@ -98,24 +130,24 @@ class IROptimizer:
                 res: int | float | float = 0
                 arithOps = {'ADD', 'SUB','MUL','DIV','REM'}
                 if inst[0] in arithOps:
-                    instType = 'MOVF' if eitherIsFloat(self.const.inst[1], self.const.inst[2]) else 'MOVI'
+                    instType = 'MOVF' if eitherIsFloat(self.const[inst[1]], self.const[inst[2]]) else 'MOVI'
                     match inst[0]:
-                        case 'ADD': res = self.const.inst[1] + self.const.inst[2]
-                        case 'SUB': res = self.const.inst[1] - self.const.inst[2]
-                        case 'MUL': res = self.const.inst[1] * self.const.inst[2]
-                        case 'DIV': res = self.const.inst[1] / self.const.inst[2] if instType == 'MOVF' else self.const.inst[1] // self.const.inst[2]
-                        case 'REM': res = self.const.inst[1] % self.const.inst[2]
+                        case 'ADD': res = self.const[inst[1]] + self.const[inst[2]]
+                        case 'SUB': res = self.const[inst[1]] - self.const[inst[2]]
+                        case 'MUL': res = self.const[inst[1]] * self.const[inst[2]]
+                        case 'DIV': res = self.const[inst[1]] / self.const[inst[2]] if instType == 'MOVF' else self.const[inst[1]] // self.const[inst[2]]
+                        case 'REM': res = self.const[inst[1]] % self.const[inst[2]]
                 else:
                     instType = 'MOVB'
                     if inst[0] == "CMP":
                         match inst[1]:
-                            case '<': res = self.const.inst[2] < self.const.inst[3]
-                            case '<=': res = self.const.inst[2] <= self.const.inst[3]
-                            case '>': res = self.const.inst[2] > self.const.inst[3]
-                            case '>=': res = self.const.inst[2] >= self.const.inst[3]
-                            case '==': res = self.const.inst[2] == self.const.inst[3]
-                            case '!=': res = self.const.inst[2] != self.const.inst[3]
-                    else: res = (self.const.inst[1] and self.const.inst[2]) if inst[0] == 'AND' else (self.const.inst[1] or self.const.inst[2])
+                            case '<': res = self.const[inst[2]] < self.const[inst[3]]
+                            case '<=': res = self.const[inst[2]] <= self.const[inst[3]]
+                            case '>': res = self.const[inst[2]] > self.const[inst[3]]
+                            case '>=': res = self.const[inst[2]] >= self.const[inst[3]]
+                            case '==': res = self.const[inst[2]] == self.const[inst[3]]
+                            case '!=': res = self.const[inst[2]] != self.const[inst[3]]
+                    else: res = (self.const[inst[1]] and self.const[inst[2]]) if inst[0] == 'AND' else (self.const[inst[1]] or self.const[inst[2]])
                     res = int(res)
                 inst = (instType, res, inst[-1])
                 needsHandling = True # Para chequear por más optimizaciones posibles
@@ -137,14 +169,13 @@ class IROptimizer:
         validOps: set[str] = {"ADD", "SUB", "MUL", "DIV", "REM"}
         res: bool = False
         if inst[0] in validOps:
-            if self.eitherIsInConst(self.const[inst[1]], self.const[inst[2]]):
+            if self.eitherIsInConst(inst[1], inst[2]):  # Bug 4 fix: pasar claves, no valores
                 match inst[0]:
-                    case "ADD": res = self.const.inst[1] == 0 or self.const.inst[2] == 0
-                    case "SUB": res = self.const.inst[2] == 0
-                    case "MUL": res = self.const.inst[1] == 1 or self.const.inst[2] == 1
-                    case "DIV": res = self.const.inst[2] == 1
-                    case "REM": res = self.const.inst[2] % 1 == 0
-        # Es posible añadir simplificación para and y or, pero no es un requisito, tons no lo añado (aún)
+                    case "ADD": res = self.const.get(inst[1], None) == 0 or self.const.get(inst[2], None) == 0
+                    case "SUB": res = self.const.get(inst[2], None) == 0
+                    case "MUL": res = self.const.get(inst[1], None) == 1 or self.const.get(inst[2], None) == 1
+                    case "DIV": res = self.const.get(inst[2], None) == 1
+                    case "REM": res = self.const.get(inst[2], None) == 1  # x % 1 siempre es 0
         return res
     
 

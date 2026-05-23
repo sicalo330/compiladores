@@ -20,8 +20,22 @@ class IROptimizer:
         new_globals = list(program.globals)
         new_functions: list[IRFunction] = []
 
+        # Pre-poblar var_const con los valores globales conocidos
+        # para que los LOADI dentro de funciones los puedan resolver
+        global_var_const: dict = {}
+        global_reg_const: dict = {}
+        for inst in program.globals:
+            op = inst[0]
+            if op in {"MOVI", "MOVF", "MOVB"} and len(inst) == 3:
+                global_reg_const[inst[2]] = inst[1]
+            elif op in {"STORE", "STOREI", "STOREF"} and len(inst) == 3:
+                src, var_name = inst[1], inst[2]
+                src_val = global_reg_const.get(src) if isinstance(src, str) and src.startswith("R") else None
+                if src_val is not None:
+                    global_var_const[var_name] = src_val
+
         for fn in program.functions:
-            new_insts = self.optimize_instruction_list(fn.instructions)
+            new_insts = self.optimize_instruction_list(fn.instructions, initial_var_const=dict(global_var_const))
             new_functions.append(
                 IRFunction(
                     name=fn.name,
@@ -33,11 +47,11 @@ class IROptimizer:
 
         return IRProgram(globals=new_globals, functions=new_functions)
 
-    def optimize_instruction_list(self, instructions: list[Instruction]) -> list[Instruction]:
+    def optimize_instruction_list(self, instructions: list[Instruction], initial_var_const: dict = None) -> list[Instruction]:
         insts = list(instructions)
 
         if self.level >= 1:
-            insts = self.constant_fold_and_simplify(insts)
+            insts = self.constant_fold_and_simplify(insts, initial_var_const=initial_var_const or {})
             insts = self.remove_unreachable(insts)
             insts = self.remove_branch_to_next_label(insts)
 
@@ -50,13 +64,22 @@ class IROptimizer:
     # Nivel O1
     # -------------------------------------------------
 
-    def constant_fold_and_simplify(self, instructions: list[Instruction]) -> list[Instruction]:
+    def constant_fold_and_simplify(self, instructions: list[Instruction], initial_var_const: dict = None) -> list[Instruction]:
         const: dict[str, Any] = {}
-        var_const: dict[str, Any] = {}
+        var_const: dict[str, Any] = dict(initial_var_const) if initial_var_const else {}
+        scope_stack: list[dict] = []  # Para ENTER/EXIT: guarda snapshots del scope
         out: list[Instruction] = []
 
         for inst in instructions:
             op = inst[0]
+
+            # Al encontrar un LABEL, invalidar const y var_const
+            # porque el label puede ser destino de un salto hacia atrás (loop)
+            if op == "LABEL":
+                const.clear()
+                var_const.clear()
+                out.append(inst)
+                continue
 
             if op in {"MOVI", "MOVF", "MOVB"} and len(inst) == 3:
                 value, dst = inst[1], inst[2]
@@ -64,18 +87,26 @@ class IROptimizer:
                 out.append(inst)
                 continue
 
-            if op == "LOADI" and len(inst) == 3:
+            if op in {"LOADI", "LOADF", "LOADB", "LOADS", "LOADV", "LOAD"} and len(inst) == 3:
                 var_name, dst = inst[1], inst[2]
                 if var_name in var_const:
                     value = var_const[var_name]
-                    out.append(("MOVI" if isinstance(value, int) else "MOVF", value, dst))
+                    if isinstance(value, float):
+                        mov_op = "MOVF"
+                    elif isinstance(value, bool) or op == "LOADB":
+                        mov_op = "MOVB"
+                    elif isinstance(value, str) or op == "LOADS":
+                        mov_op = "MOVS"
+                    else:
+                        mov_op = "MOVI"
+                    out.append((mov_op, value, dst))
                     const[dst] = value
                 else:
                     const.pop(dst, None)
                     out.append(inst)
                 continue
 
-            if op == "STORE" and len(inst) == 3:
+            if op in {"STORE", "STOREF", "STOREI", "STOREB", "STORES", "STOREV"} and len(inst) == 3:
                 src, var_name = inst[1], inst[2]
                 src_val = const.get(src) if isinstance(src, str) and src.startswith("R") else (src if not isinstance(src, str) else None)
                 if src_val is not None:
@@ -189,6 +220,28 @@ class IROptimizer:
                         out.append(("BRANCH", false_label))
                         continue
 
+                out.append(inst)
+                continue
+
+            # Manejo de scopes: ENTER guarda snapshot, EXIT lo restaura
+            if op == "ENTER":
+                scope_stack.append((dict(const), dict(var_const)))
+                out.append(inst)
+                continue
+
+            if op == "EXIT":
+                if scope_stack:
+                    saved_const, saved_var_const = scope_stack.pop()
+                    # Eliminar registros/vars locales que no existían antes del bloque
+                    for k in list(const.keys()):
+                        if k not in saved_const:
+                            del const[k]
+                    for k in list(var_const.keys()):
+                        if k not in saved_var_const:
+                            del var_const[k]
+                    # Restaurar valores que el bloque pudo haber pisado
+                    const.update(saved_const)
+                    var_const.update(saved_var_const)
                 out.append(inst)
                 continue
 
@@ -380,6 +433,7 @@ class IROptimizer:
 def parse_opt_level(value: str) -> int:
     text = str(value).strip()
 
+    #Por si acaso ponen O1 a secas en vez de -O1
     if text.startswith("-O"):
         text = text[2:]
     elif text.startswith("O"):
@@ -390,7 +444,11 @@ def parse_opt_level(value: str) -> int:
 
     level = int(text)
 
-    if level < 0 or level > 4:
+    #Solo se hará el O1
+    #if level < 0 or level > 4:
+     #   raise ValueError("El nivel de optimización debe estar entre 0 y 4")
+
+    if level != 1:
         raise ValueError("El nivel de optimización debe estar entre 0 y 4")
 
     return level
