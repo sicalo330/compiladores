@@ -1,0 +1,11 @@
+# Globals
+No Globals in this program
+
+Functions
+function main
+  ('RET',)
+  ('MOVI', 999, 'R1')
+  ('PRINT', 'R1')
+  ('RET',)
+
+[main pc=0] ('RET',) stack=[] locals={}

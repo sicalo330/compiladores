@@ -25,8 +25,16 @@ Cabe aclarar lo siguiente, todo el proyecto funciona por estpas y si en alguna d
 Primero que todo es necesario estar en la raíz principal del proyecto
 ![alt text](/additions/img/rootProyect.png)
 
-Posteriormente usar el siguiente comando para verificar el estado del lexer
+Para poder generar todas las fases del proyecto, es decir desde el lexer hasta el IR optimizado con O1 es necesario poner el comando python seguido del archivo main.py que es la unidad centrar de la lógica del compilador y justo después poner qué archivo se quiere testear o en este caso la ruta del archivo a testeas. Para poder generar la representación intermedia hace falta usar los sigiuentes comandos
 
-```bash
-python main.py test/Parser/Bad/bad{numero}.bminor
+```
+python main.py test/IRO/test{numero}.bminor
+python main.py test/IROptimizer/test{numero}.bminor
+```
+
+Si se quiere generar el IR con la optimización O1 es necesario poner exactamente el mismo comando pero con un -O1 al final
+
+```
+python main.py test/IRO/test{numero}.bminor
+python main.py test/IROptimizer/test{numero}.bminor
 ```
