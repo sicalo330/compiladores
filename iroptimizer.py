@@ -4,26 +4,30 @@ from typing import Any, Optional
 
 from ircode_starter import IRProgram, IRFunction, Instruction
 
-
 class IROptimizer:
     def __init__(self, level: int = 0):
         self.level = level
 
+    #Esta es la primera función en la que entra el optimizador
     @classmethod
     def optimize(cls, program: IRProgram, level: int = 0) -> IRProgram:
         return cls(level).visit_program(program)
 
+    #Luego entra aquí, este recorre todo el IR
     def visit_program(self, program: IRProgram) -> IRProgram:
         if self.level <= 0:
             return program
 
+        #Toma los globales y las funciones del IR generado
         new_globals = list(program.globals)
         new_functions: list[IRFunction] = []
 
-        # Pre-poblar var_const con los valores globales conocidos
-        # para que los LOADI dentro de funciones los puedan resolver
         global_var_const: dict = {}
         global_reg_const: dict = {}
+        #Esto optimiza las variables constantes, si tenemos:
+        #('MOVI', 10, 'R1')
+        #('STORE', 'R1', 'x')
+        #Entonces el optimizador sabra que x=10
         for inst in program.globals:
             op = inst[0]
             if op in {"MOVI", "MOVF", "MOVB"} and len(inst) == 3:
@@ -64,6 +68,7 @@ class IROptimizer:
     # Nivel O1
     # -------------------------------------------------
 
+    #Aquí se simplifican las expresiones
     def constant_fold_and_simplify(self, instructions: list[Instruction], initial_var_const: dict = None) -> list[Instruction]:
         const: dict[str, Any] = {}
         var_const: dict[str, Any] = dict(initial_var_const) if initial_var_const else {}
@@ -73,8 +78,8 @@ class IROptimizer:
         for inst in instructions:
             op = inst[0]
 
-            # Al encontrar un LABEL, invalidar const y var_const
-            # porque el label puede ser destino de un salto hacia atrás (loop)
+            #Al encontrar un LABEL, invalida el const y var_const
+            #porque el label puede ser destino de un salto hacia atrás (loop)
             if op == "LABEL":
                 const.clear()
                 var_const.clear()
@@ -454,51 +459,51 @@ def parse_opt_level(value: str) -> int:
     return level
 
 
-if __name__ == "__main__":
-    import sys
-    from ircode_starter import IRCodeGen
+# if __name__ == "__main__":
+#     import sys
+#     from ircode_starter import IRCodeGen
 
-    if len(sys.argv) < 2:
-        print("Uso: python iroptimizer.py archivo.bminor -O1")
-        sys.exit(1)
+#     if len(sys.argv) < 2:
+#         print("Uso: python iroptimizer.py archivo.bminor -O1")
+#         sys.exit(1)
 
-    src = sys.argv[1]
-    level = 0
-    if len(sys.argv) >= 3:
-        try:
-            level = parse_opt_level(sys.argv[2])
-        except Exception:
-            try:
-                level = int(sys.argv[2])
-            except Exception:
-                level = 0
+#     src = sys.argv[1]
+#     level = 0
+#     if len(sys.argv) >= 3:
+#         try:
+#             level = parse_opt_level(sys.argv[2])
+#         except Exception:
+#             try:
+#                 level = int(sys.argv[2])
+#             except Exception:
+#                 level = 0
 
-    # For convenience, if input is a .bminor source, run through parser -> ircode
-    try:
-        with open(src, "r", encoding="utf-8") as f:
-            code = f.read()
-        # try to generate IR from source using existing pipeline
-        from lexer import Lexer
-        from parser import Parser
-        from checker import Checker
+#     # For convenience, if input is a .bminor source, run through parser -> ircode
+#     try:
+#         with open(src, "r", encoding="utf-8") as f:
+#             code = f.read()
+#         # try to generate IR from source using existing pipeline
+#         from lexer import Lexer
+#         from parser import Parser
+#         from checker import Checker
 
-        lexer = Lexer()
-        parser = Parser()
-        ast = parser.parse(lexer.tokenize(code))
-        checker = Checker()
-        checker.check(ast)
-        ir = IRCodeGen.generate(ast)
-    except Exception:
-        # fallback: try to load a pickled IRProgram
-        try:
-            import pickle
+#         lexer = Lexer()
+#         parser = Parser()
+#         ast = parser.parse(lexer.tokenize(code))
+#         checker = Checker()
+#         checker.check(ast)
+#         ir = IRCodeGen.generate(ast)
+#     except Exception:
+#         # fallback: try to load a pickled IRProgram
+#         try:
+#             import pickle
 
-            with open(src, "rb") as f:
-                ir = pickle.load(f)
-        except Exception as e:
-            print("No se pudo leer el archivo como .bminor ni como IR pickled:", e)
-            raise
+#             with open(src, "rb") as f:
+#                 ir = pickle.load(f)
+#         except Exception as e:
+#             print("No se pudo leer el archivo como .bminor ni como IR pickled:", e)
+#             raise
 
-    opt = IROptimizer(level)
-    new_ir = opt.optimize(ir, level=level)
-    print(new_ir.format())
+#     opt = IROptimizer(level)
+#     new_ir = opt.optimize(ir, level=level)
+#     print(new_ir.format())

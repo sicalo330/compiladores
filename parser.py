@@ -25,7 +25,7 @@ class Parser(sly.Parser):
     #Esto va a generar un archivo grammar.txt
     debugfile = "additions/grammarAST.txt"
 
-    #PROGRAMA
+    #PROGRAMA primero llega a esta función y llama a opt_decl_list
     @_("opt_decl_list")
     def prog(self, p):
         lineno = p.opt_decl_list[0].lineno if p.opt_decl_list else 0
@@ -34,18 +34,20 @@ class Parser(sly.Parser):
         return node
 
 #LISTAS DE DECLARACIONES
+    #Si no hay token significa que el test está vació y por lo tanto no hay nada que hacer
     @_('')
     def opt_decl_list(self, p):
         return []
-
+    #Aquí llega si hay tokens
     @_('decl_list')
     def opt_decl_list(self, p):
         return p.decl_list
-    
+    #Para una declaración
     @_('decl')
     def decl_list(self, p):
         return [p.decl]
 
+    #Para más de una declaración
     @_('decl decl_list')
     def decl_list(self, p):
         return [p.decl] + p.decl_list
@@ -243,6 +245,7 @@ class Parser(sly.Parser):
     def opt_expr(self, p):
         return p.expr
 
+    #Llega aquí en expresion tipo x=5 x+=2 x*=7
     @_('lval assign_op expr',
        'CONSTANT lval assign_op expr')
     def expr(self, p):
@@ -265,6 +268,7 @@ class Parser(sly.Parser):
         return p[0]
 
 # LVALUES
+#Todas las lval signfiican asiganciones de variables con sus valores
     @_('ID')
     def lval(self, p):
         return _L(Location(p.ID), p.lineno)
@@ -302,6 +306,7 @@ class Parser(sly.Parser):
     def expr3(self, p):
         return p.expr4
 
+    #Aquí llega para expresiones con comparaciones tipo x < y p y > x
     @_('expr4 comp_op expr5')
     def expr4(self, p):
         return _L(BinOp(p.comp_op, p.expr4, p.expr5), p.lineno)
@@ -354,7 +359,7 @@ class Parser(sly.Parser):
     @_('expr9')
     def expr8(self, p):
         return p.expr9
-    
+    #Operador ternario creo que nunca testeamos esto
     @_('expr "?" expr ":" expr')
     def expr9(self, p):
         return _L(TernOp(p.expr0, p.expr1, p.expr2))
@@ -440,7 +445,7 @@ class Parser(sly.Parser):
     def factor(self, p):
         return _L(Literal(False, "boolean"), p.lineno)
 
-# TIPOS
+#TIPOS
     @_('INTEGER',
         'FLOAT',
         'BOOLEAN',

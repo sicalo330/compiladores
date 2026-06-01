@@ -10,6 +10,7 @@ from checker import Checker
 from ircode_starter import IRCodeGen
 from irinterp import IRInterpreter, IRRuntimeError
 from errors import *
+#Creo que ya no vamos a utilizar ircode_optimizer.py
 from iroptimizer import IROptimizer, parse_opt_level
 
 def load_file():
@@ -63,12 +64,14 @@ def main():
         print("\n[red]Lexical check: FAILED[/red]. Abortando...")
         sys.exit(1)
     
+
     ast = parser.parse(iter(tokens))
 
     if has_errors(stage="PARSER") or ast is None:
         print("\n[red]Parser check: FAILED[/red].")
         sys.exit(1)
-    
+
+    #generateAST(ast)
     print("\n[green]Parser check: SUCCESS[/green]")
     
     checker = Checker()
@@ -79,6 +82,8 @@ def main():
         sys.exit(1)
 
     print("\n[green]Checker: SUCCESS[/green]")
+
+    print(ast)
 
     try:
         ir = IRCodeGen.generate(ast)
@@ -96,12 +101,13 @@ def main():
                 opt_level = int(sys.argv[2])
             except Exception:
                 opt_level = 0
-
+    #----------------------Optimización-----------------------
     if opt_level >= 1:
         ir = IROptimizer.optimize(ir, level=opt_level)
 
     with open("test/IR/IRToOptimize.pickle", "wb") as f:
         pickle.dump(ir, f)
+    #-----------------------------------------------------------
 
     import os, io
 
@@ -115,6 +121,7 @@ def main():
     old_stdout = sys.stdout
     interp_error = None
 
+    #Verifica si hay función main
     if ir.has_function("main"):
         main_fn = next((fn for fn in ir.functions if fn.name == "main"), None)
         if main_fn is not None and len(main_fn.params) == 0:
@@ -133,7 +140,7 @@ def main():
             buf.write(msg + "\n")
             print(f"[yellow]{msg}[/yellow]")
     else:
-        msg = "\nNo se encontro funcion main. La representacion intermedia se genero correctamente, pero no se puede ejecutar."
+        msg = "\nNo se encontró funcion main. La representacion intermedia se genero correctamente, pero no se puede ejecutar."
         buf.write(msg + "\n")
         print(f"[yellow]{msg}[/yellow]")
 

@@ -229,7 +229,9 @@ class IRCodeGen(Visitor):
     # =================================================
 
     def visit_vardecl(self, node: VarDecl):
+        #Self.bind guarda la variable para que al hacer self.lookup no tenga que volver a ver el ast sino que estaría listo
         self.bind(Storage(node.name, node.datatype))
+        #emit solo escribe un registro y ya
         self.emit("ALLOC", node.name)
 
         if node.value:
@@ -237,25 +239,20 @@ class IRCodeGen(Visitor):
             self.emit("STORE", val, node.name)
 
     def visit_arraydecl(self, node: ArrayDecl):
-        # Bind the array storage
         self.bind(Storage(node.name, node.datatype))
         
-        # For arrays, we allocate once per declaration
         self.emit("ALLOC", node.name)
         
-        # If there are initial values, store them
         if node.elements:
             for i, elem in enumerate(node.elements):
                 val = self.visit(elem)
-                # For simplicity, we emit a STORE with index
-                # The interpreter will handle array indexing
                 self.emit("STOREA", val, node.name, i)
 
     # =================================================
     # STATEMENTS
     # =================================================
 
-    def visit_assignment(self, node: Assignment): # ???
+    def visit_assignment(self, node: Assignment):
         val = self.visit(node.expr)
         self.emit("STORE", val, node.loc.name)
 
@@ -415,6 +412,9 @@ class IRCodeGen(Visitor):
 
         return out
 
+    #Esta función maneja los x++  o x--
+    #Solo fucionan en variables por eso es imporante que location sea el adecuado
+    #Por ejemplo (x+1)++ no está permitido
     def visit_affix(self, node: AffixOp):
         if not isinstance(node.expr, Location):
             raise Exception(f"AffixOp solo soportado sobre Location, no {type(node.expr)}")
@@ -448,7 +448,7 @@ class IRCodeGen(Visitor):
         return result
 
     #Aquí hay booleanos, enteros, flotantes y strings
-    # #En este caso los booleanos se representacn con 1 = true y 0 = false    
+    #En este caso los booleanos se representacn con 1 = true y 0 = false    
     def visit_literal(self, node):
         tmp = self.new_temp()
 

@@ -8,6 +8,7 @@ from visitor import Visitor
 import errors
 
 class Checker(Visitor):
+    #Recordar que node es el AST y self es todo lo que tenga que ver con la pila interna del Checker
     def __init__(self):
             self.symtab = Symtab("global")
             self._func_stack = []  #Es necesario poner una lista para simular una pila de funciones, creo que será util para bad1
@@ -21,7 +22,6 @@ class Checker(Visitor):
     # SISTEMA DE ERRORES UNIFICADO
     # ==========================================
     def error(self, msg, node=None):
-        # Evitamos reportar el mismo error varias veces si el nodo es el mismo
         error_key = (msg, node.lineno if node else None)
         if error_key not in self.error_set:
             errors.error(msg, lineno=node.lineno if node else None, stage="CHECKER")
@@ -59,6 +59,8 @@ class Checker(Visitor):
     @multimethod
     def _visit(self, node: Program):
         for decl in node.decls:
+            #Cuando habla de expresiones en nivel superior se refiere a declaraciones como 5 + 7 o x++ fuera de una función
+            #Solo acepta esas expresiones dentro
             if isinstance(decl, ExprStmt):
                 self.error("No se permiten expresiones en el nivel superior", decl)
             else:
@@ -76,29 +78,36 @@ class Checker(Visitor):
             self.error(f"Variable '{node.name}' ya declarada en este ámbito", node)
             return "error"
 
+        #Estandariza una forma de pila
         self.symtab.add(node.name, {"kind": "var", "type": target_type})
 
+        #Esto de abajo compara si la declaración corresponde al valor
         if node.value:
             value_type = self.visit(node.value)
             if value_type != "error" and target_type != value_type:
                 #Esta linea de aquí está horriblemente larga
                 self.error(f"Asignación incompatible en '{node.name}':"
                 f"Se esperaba {self.type_to_string(target_type)} y se obtuvo {self.type_to_string(value_type)}", node)
+
+        #Esto facilita el retorno de tipo para el IR
         node.type = target_type
         return target_type
 
     @multimethod
     def _visit(self, node: ArrayDecl):
+        #Obtiene el tipo del array
         full_type = self.get_type(node.datatype)
-        # Extraer el tipo de los elementos para validar la lista de inicialización
+        #Extraer el tipo de los elementos para validar la lista de inicialización
         elem_type = self.get_type(node.datatype.elem_type)
-        
+
+        #Solo verifica si la varibale ya fue declarada
         if node.name in self.symtab._map:
             self.error(f"Arreglo '{node.name}' ya declarado en este ámbito", node)
             return "error"
 
         self.symtab.add(node.name, {"kind": "array", "type": full_type})
 
+        #Verifica si el tipo del array corresponde con los elementos
         if node.elements:
             for el in node.elements:
                 actual_type = self.visit(el)
@@ -110,16 +119,17 @@ class Checker(Visitor):
     @multimethod
     def _visit(self, node: FuncDecl):
         self.symtab.add(node.name, {"type": node.datatype, "category": "function"})
-                
+        #Si no mal recuerdo ret_type toma el tipo de retorno
         ret_type = self.get_type(node.datatype.ret_type)
         self._func_stack.append(ret_type)
+
         
         old_tab = self.symtab
         self.symtab = Symtab(node.name, parent=old_tab)
         
         for p in node.datatype.params:
             self.visit(p) 
-        
+
         if node.body:
             for stmt in node.body: self.visit(stmt)
 
@@ -132,6 +142,7 @@ class Checker(Visitor):
     # STATEMENTS
     # ==========================================
 
+    #Tengo entendido que esto son para los bloques de código {...}
     @multimethod
     def _visit(self, node: BlockStmt):
         old = self.symtab
@@ -269,9 +280,10 @@ class Checker(Visitor):
         params = func_type.params
         args = node.args
 
+        #Cantidad de parametros incorrecto
         if len(params) != len(args):
             self.error(f"La función '{node.name}' esperaba {len(params)} argumentos, recibió {len(args)}", node)
-
+        
         for i, (param, arg_expr) in enumerate(zip(params, args)):
             arg_type = self.visit(arg_expr)
             param_type = self.get_type(param.datatype)
@@ -342,7 +354,8 @@ class Checker(Visitor):
         return "void"
 
     def get_type(self, datatype):
-        if isinstance(datatype, SimpleType): return self.normalize_type(datatype.name)
+        if isinstance(datatype, SimpleType): 
+            return self.normalize_type(datatype.name)
 
         if isinstance(datatype, ArrayType):
             return ArrayType(

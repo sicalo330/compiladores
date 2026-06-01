@@ -18,25 +18,30 @@ class Lexer(sly.Lexer):
 		# other tokens
 		ID, CHAR_LITERAL, FLOAT_LITERAL, INTEGER_LITERAL, STRING_LITERAL
 	}
+	#Si el lexer encuentra alguno de estos, los devolverá como tokens literales, es decir si ve {} devolverá {}
 	literals: str = '+-*/%^=:;,()[]{}!?'
 
+	#Esta línea le dice al lexer que debe ignorar algunos caracteres como '' o algun 	tab
+	#Si el lexer ve x     = 	19, para el lexer lo verá como x=19
 	ignore: str = ' \t\r'
 
+	#Esto detecta saltos de linea y usa la variable lineno para saber cuáles líneas usar y cuántas lineas son en total
 	@_(r"\n+")
 	def ignore_newline(self, t): self.lineno += t.value.count('\n') #Por si se pregunta, esto es lo que se encarga de aumentar en uno el lineno teniendo en cuenta los saltos de línea
 
-	# ignore comentarios
+	#Ignora comentarios
 	@_(r"\/\/[^\n]*")
 	def ignore_cppcomment(self, t): pass
 
+	#Soporta comentarios tipo /* comentario */ e incluso con saltos de línea
 	@_(r"\/\*[^*]*\*(\*|[^*/][^*]*\*)*\/")
 	def ignore_comment(self, t): self.lineno += t.value.count('\n')
 
-	# Error de comentario
+	#Error de comentario
 	@_(r"/\*(.|\n)*?")
 	def malformed_comment(self, t): error("Comentario mal formado, sin cerrar", t.lineno)
 
-	# Operadores de relacion
+	#Operadores de relacion
 	LE = r'<='
 	GE = r'>='
 	EQ = r'=='
@@ -44,22 +49,22 @@ class Lexer(sly.Lexer):
 	LT = r'<'
 	GT = r'>'
 
-	# Operadores Logicos
+	#Operadores Logicos
 	LAND = r'&&'
 	LOR  = r'\|\|'
 
-	# Incremento y decremento
+	#Incremento y decremento
 	INC = r'\+\+'
 	DEC = r'--'
 
-	# Operadores de asignación
+	#Operadores de asignación
 	ADDEQ = r'\+='
 	SUBEQ = r'-='
 	MULEQ = r'\*='
 	DIVEQ = r'/='
 	MODEQ = r'%='
 
-	# Definicion de Tokens
+	#Definicion de Tokens, identifica nombres de variables o funciones
 	ID = r'[a-zA-Z_]\w*'
 
 	ID['array']    = ARRAY
@@ -84,31 +89,33 @@ class Lexer(sly.Lexer):
 	ID['void']     = VOID
 	ID['while']    = WHILE
 
-	# Char
+	#Char
 	@_(r"'([\x20-\x7E]|\\([abefnrtv\\'\"]|0x[0-9A-Fa-f]{2}))'")
 	def CHAR_LITERAL(self, t):
 		t.value = t.value[1:-1]
 		if t.value == '\\n': t.value = '\n'
 		return t
 
+	#Identifica char malformados
 	@_(r"'.")
 	def malformed_char(self, t): error(f"malformado CHAR", t.lineno)
 
-	# Float
+	#Float 
 	@_(r"\d*(\.\d+)?[eE][-+]?[1-9]\d*|\d*\.\d+")
 	def FLOAT_LITERAL(self, t):
 		t.value = float(t.value)
 		return t
 
+
 	@_(r'(0\d+)((\.\d+(e[-+]?\d+)?)|(e[-+]?\d+))')
 	def malformed_float(self, t): error(f"Literal de punto flotante '{t.value}' no sportado", t.lineno)
 
-	# Integer
+	#Integer, cualquier número incluyendo 0 es un integer literal
 	@_(r"[1-9]\d*|0")
 	def INTEGER_LITERAL(self, t):
 		t.value = int(t.value)
 		return t
-
+	#Si empieza en un 0 o más junto con algún número, está mal formado 0321 no se acepta
 	@_(r'0\d+')
 	def malformed_integer(self, t): error(f"Literal entero '{t.value}' no sportado", t.lineno)
 
@@ -133,16 +140,16 @@ def tokenize(filename: str) -> None:
 
     tokens_accumulated = []
     
-    # Intentamos tokenizar todo
+    #Intentamos tokenizar todo
     for tok in lex.tokenize(txt):
         tokens_accumulated.append(tok)
 
-    # Si hubo errores durante el loop de tokenize, el lexer ya los imprimió
+    #Si hubo errores durante el loop de tokenize, el lexer ya los imprimió
     if has_errors():
 		#El color amarillo no se muestra, no sé por qué
         print(f"\n[bold yellow]Se encontraron errores léxicos. La tabla no se mostrará.[/bold yellow]")
     else:
-        # Solo armamos y mostramos la tabla si el análisis fue limpio
+        #Solo armamos y mostramos la tabla si el análisis fue limpio
         table = Table(title='Análisis Léxico Exitoso')
         table.add_column('type', style="cyan")
         table.add_column('value', style="green")

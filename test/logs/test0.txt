@@ -4,10 +4,10 @@ No Globals in this program
 Functions
 function main
   ('ALLOC', 'a')
-  ('MOVI', 2, 'R1')
+  ('MOVI', 10, 'R1')
   ('STORE', 'R1', 'a')
   ('ALLOC', 'b')
-  ('MOVI', 3, 'R2')
+  ('MOVI', 5, 'R2')
   ('STORE', 'R2', 'b')
   ('ALLOC', 'c')
   ('LOADI', 'a', 'R3')
@@ -16,19 +16,55 @@ function main
   ('STORE', 'R5', 'c')
   ('LOADI', 'c', 'R6')
   ('PRINT', 'R6')
+  ('LOADI', 'a', 'R7')
+  ('LOADI', 'b', 'R8')
+  ('SUB', 'R7', 'R8', 'R9')
+  ('STORE', 'R9', 'c')
+  ('LOADI', 'c', 'R10')
+  ('PRINT', 'R10')
+  ('LOADI', 'a', 'R11')
+  ('LOADI', 'b', 'R12')
+  ('MUL', 'R11', 'R12', 'R13')
+  ('STORE', 'R13', 'c')
+  ('LOADI', 'c', 'R14')
+  ('PRINT', 'R14')
+  ('LOADI', 'a', 'R15')
+  ('LOADI', 'b', 'R16')
+  ('DIV', 'R15', 'R16', 'R17')
+  ('STORE', 'R17', 'c')
+  ('LOADI', 'c', 'R18')
+  ('PRINT', 'R18')
   ('RET',)
 
 [main pc=0] ('ALLOC', 'a') stack=[] locals={}
-[main pc=1] ('MOVI', 2, 'R1') stack=[] locals={'a': 0}
+[main pc=1] ('MOVI', 10, 'R1') stack=[] locals={'a': 0}
 [main pc=2] ('STORE', 'R1', 'a') stack=[] locals={'a': 0}
-[main pc=3] ('ALLOC', 'b') stack=[] locals={'a': 2}
-[main pc=4] ('MOVI', 3, 'R2') stack=[] locals={'a': 2, 'b': 0}
-[main pc=5] ('STORE', 'R2', 'b') stack=[] locals={'a': 2, 'b': 0}
-[main pc=6] ('ALLOC', 'c') stack=[] locals={'a': 2, 'b': 3}
-[main pc=7] ('LOADI', 'a', 'R3') stack=[] locals={'a': 2, 'b': 3, 'c': 0}
-[main pc=8] ('LOADI', 'b', 'R4') stack=[] locals={'a': 2, 'b': 3, 'c': 0}
-[main pc=9] ('ADD', 'R3', 'R4', 'R5') stack=[] locals={'a': 2, 'b': 3, 'c': 0}
-[main pc=10] ('STORE', 'R5', 'c') stack=[] locals={'a': 2, 'b': 3, 'c': 0}
-[main pc=11] ('LOADI', 'c', 'R6') stack=[] locals={'a': 2, 'b': 3, 'c': 5}
-[main pc=12] ('PRINT', 'R6') stack=[] locals={'a': 2, 'b': 3, 'c': 5}
-5[main pc=13] ('RET',) stack=[] locals={'a': 2, 'b': 3, 'c': 5}
+[main pc=3] ('ALLOC', 'b') stack=[] locals={'a': 10}
+[main pc=4] ('MOVI', 5, 'R2') stack=[] locals={'a': 10, 'b': 0}
+[main pc=5] ('STORE', 'R2', 'b') stack=[] locals={'a': 10, 'b': 0}
+[main pc=6] ('ALLOC', 'c') stack=[] locals={'a': 10, 'b': 5}
+[main pc=7] ('LOADI', 'a', 'R3') stack=[] locals={'a': 10, 'b': 5, 'c': 0}
+[main pc=8] ('LOADI', 'b', 'R4') stack=[] locals={'a': 10, 'b': 5, 'c': 0}
+[main pc=9] ('ADD', 'R3', 'R4', 'R5') stack=[] locals={'a': 10, 'b': 5, 'c': 0}
+[main pc=10] ('STORE', 'R5', 'c') stack=[] locals={'a': 10, 'b': 5, 'c': 0}
+[main pc=11] ('LOADI', 'c', 'R6') stack=[] locals={'a': 10, 'b': 5, 'c': 15}
+[main pc=12] ('PRINT', 'R6') stack=[] locals={'a': 10, 'b': 5, 'c': 15}
+15[main pc=13] ('LOADI', 'a', 'R7') stack=[] locals={'a': 10, 'b': 5, 'c': 15}
+[main pc=14] ('LOADI', 'b', 'R8') stack=[] locals={'a': 10, 'b': 5, 'c': 15}
+[main pc=15] ('SUB', 'R7', 'R8', 'R9') stack=[] locals={'a': 10, 'b': 5, 'c': 15}
+[main pc=16] ('STORE', 'R9', 'c') stack=[] locals={'a': 10, 'b': 5, 'c': 15}
+[main pc=17] ('LOADI', 'c', 'R10') stack=[] locals={'a': 10, 'b': 5, 'c': 5}
+[main pc=18] ('PRINT', 'R10') stack=[] locals={'a': 10, 'b': 5, 'c': 5}
+5[main pc=19] ('LOADI', 'a', 'R11') stack=[] locals={'a': 10, 'b': 5, 'c': 5}
+[main pc=20] ('LOADI', 'b', 'R12') stack=[] locals={'a': 10, 'b': 5, 'c': 5}
+[main pc=21] ('MUL', 'R11', 'R12', 'R13') stack=[] locals={'a': 10, 'b': 5, 'c': 5}
+[main pc=22] ('STORE', 'R13', 'c') stack=[] locals={'a': 10, 'b': 5, 'c': 5}
+[main pc=23] ('LOADI', 'c', 'R14') stack=[] locals={'a': 10, 'b': 5, 'c': 50}
+[main pc=24] ('PRINT', 'R14') stack=[] locals={'a': 10, 'b': 5, 'c': 50}
+50[main pc=25] ('LOADI', 'a', 'R15') stack=[] locals={'a': 10, 'b': 5, 'c': 50}
+[main pc=26] ('LOADI', 'b', 'R16') stack=[] locals={'a': 10, 'b': 5, 'c': 50}
+[main pc=27] ('DIV', 'R15', 'R16', 'R17') stack=[] locals={'a': 10, 'b': 5, 'c': 50}
+[main pc=28] ('STORE', 'R17', 'c') stack=[] locals={'a': 10, 'b': 5, 'c': 50}
+[main pc=29] ('LOADI', 'c', 'R18') stack=[] locals={'a': 10, 'b': 5, 'c': 2}
+[main pc=30] ('PRINT', 'R18') stack=[] locals={'a': 10, 'b': 5, 'c': 2}
+2[main pc=31] ('RET',) stack=[] locals={'a': 10, 'b': 5, 'c': 2}

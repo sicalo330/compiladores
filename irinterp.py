@@ -88,6 +88,7 @@ class IRInterpreter:
 		if module_or_functions is not None:
 			self.load(module_or_functions)
 	
+	#Esta función toma el IR del ircodestarter y lo guarda en este interp.py
 	def load(self, module_or_functions: Any) -> None:
 		self.functions.clear()
 		
@@ -110,17 +111,20 @@ class IRInterpreter:
 			return
 			
 		raise IRRuntimeError(f"No puedo cargar funciones desde {type(module_or_functions).__name__}")
-		
+	
+	#Esta función siempre entrará de primero
 	def run(self, name: str = "main", *args):
 		return self.call(name, list(args))
 		
 	def call(self, name: str, args: list[Any]):
+		#name en este caso es la función que piden que se ejecute que por default es main,
+		#si este no está en la pila de funciones que mandó ircode_starter entonces no hay función main, 
+		#por lo tanto no se va a ejectura
 		if name not in self.functions:
 			raise IRRuntimeError(f"Función no encontrada: {name}")
 			
 		fn = self.functions[name]
 		
-		# Permitir builtins Python
 		if callable(fn) and not hasattr(fn, "instructions") and not hasattr(fn, "code"):
 			return fn(*args)
 			
@@ -132,7 +136,9 @@ class IRInterpreter:
 		if not name:
 			raise IRRuntimeError(f"Función sin nombre: {fn}")
 		self.functions[name] = fn
-		
+	
+	#Make frame se llama cada vez que hay una funcion, si hay dos funciones se llama dos veces, si hay tres, tres...
+	#Deja un diccionario para poder ir guardando todas las pilas de instrucciones posteriores
 	def _make_frame(self, fn: Any, args: list[Any]) -> Frame:
 		instructions = self._extract_code(fn)
 		param_names = self._extract_param_names(fn)
@@ -175,6 +181,7 @@ class IRInterpreter:
 			return [str(x) for x in getattr(fn, "args")]
 		return []
 	
+	#Esta función ejecuta las varaibles globales, es decir fuera de la función
 	def _execute_global_inits(self, code: list[tuple]) -> None:
 		"""
 		Ejecuta una secuencia simple de inicialización global.
@@ -185,6 +192,7 @@ class IRInterpreter:
 		frame = Frame(name="_globals", instructions=list(code))
 		self._execute_frame(frame)
 	
+	#Aquí ocurre lo que es la ejecución del IR en sí gracias al while
 	def _execute_frame(self, frame: Frame):
 		self.call_depth += 1
 		try:
@@ -639,6 +647,9 @@ class IRInterpreter:
 		
 		if op == "BRANCH":
 			label = args[0]
+			#Entra a la función jump to label para saber si hay algún L1 o L2...
+			#De ser así devolvería un true para jump
+			#Y si es true entonces hay saltos
 			frame.pc = self._jump_to_label(frame, label)
 			return True
 			
@@ -674,6 +685,7 @@ class IRInterpreter:
 			
 		raise IRRuntimeError(f"Opcode no soportado: {op}")
 	
+	#Esta función general los logs
 	def _trace(self, frame: Frame, inst: tuple) -> None:
 		if not self.trace:
 			return
@@ -845,50 +857,50 @@ class IRInterpreter:
 				depth -= 1
 		raise IRRuntimeError("No se encontró LOOP correspondiente")
 
-def _demo_module() -> IRModule:
-	"""
-	Programa demo:
-	x: integer = 1;
-	while x <= 5 {
-		print x;
-		x = x + 1;
-	}
-	return x;
-	"""
-	main = IRFunction(
-		name="main",
-		params=[],
-		return_type="I",
-		instructions=[
-			("LOCALI", "x"),
-			("CONSTI", 1),
-			("STORE", "x"),
+# def _demo_module() -> IRModule:
+# 	"""
+# 	Programa demo:
+# 	x: integer = 1;
+# 	while x <= 5 {
+# 		print x;
+# 		x = x + 1;
+# 	}
+# 	return x;
+# 	"""
+# 	main = IRFunction(
+# 		name="main",
+# 		params=[],
+# 		return_type="I",
+# 		instructions=[
+# 			("LOCALI", "x"),
+# 			("CONSTI", 1),
+# 			("STORE", "x"),
 			
-			("LOOP",),
-				("LOAD", "x"),
-				("CONSTI", 5),
-				("LEI",),
-				("CONSTI", 0),
-				("EQI",),
-				("CBREAK",),
+# 			("LOOP",),
+# 				("LOAD", "x"),
+# 				("CONSTI", 5),
+# 				("LEI",),
+# 				("CONSTI", 0),
+# 				("EQI",),
+# 				("CBREAK",),
 			
-				("LOAD", "x"),
-				("PRINTI",),
+# 				("LOAD", "x"),
+# 				("PRINTI",),
 			
-				("LOAD", "x"),
-				("CONSTI", 1),
-				("ADDI",),
-				("STORE", "x"),
-			("ENDLOOP",),
+# 				("LOAD", "x"),
+# 				("CONSTI", 1),
+# 				("ADDI",),
+# 				("STORE", "x"),
+# 			("ENDLOOP",),
 			
-			("LOAD", "x"),
-			("RET",),
-		],
-	)
-	return IRModule(functions=[main])
+# 			("LOAD", "x"),
+# 			("RET",),
+# 		],
+# 	)
+# 	return IRModule(functions=[main])
 	
 	
-if __name__ == "__main__":
-	interp = IRInterpreter(_demo_module(), trace=False)
-	result = interp.run("main")
-	# print("\nreturn =", result)
+# if __name__ == "__main__":
+# 	interp = IRInterpreter(_demo_module(), trace=False)
+# 	result = interp.run("main")
+# 	# print("\nreturn =", result)
